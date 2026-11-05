@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Client, ClientFile, FileKind, Goal, MetricKey } from '@shared/types.ts';
 import { addMonths, ageOn, fmtLong, fmtShort } from '@shared/dates.ts';
 import { change, changeWith, fmtValue, fmtWith, goalProgress, isMetric, metric, METRICS, parseWith, series, type TrackDef } from '@shared/metrics.ts';
@@ -271,6 +271,7 @@ const FILE_KINDS: [FileKind, string][] = [
 
 function FilesTab({ c }: { c: Client }) {
   const { snap, repo, save, toast, reload } = useStore();
+  const nav = useNavigate();
   const input = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState<FileKind>('id');
   const [busy, setBusy] = useState(false);
@@ -320,6 +321,18 @@ function FilesTab({ c }: { c: Client }) {
     else { await navigator.clipboard?.writeText(link); toast('Link copied. Add a phone number to text it.'); }
   };
 
+  // Opens the same form the client gets, inside the app, so the client can fill it out
+  // on the trainer's phone (and so it can be demoed before the Google account is connected).
+  const fillHere = async () => {
+    let token = intake && !intake.completedAt ? intake.token : null;
+    if (!token) {
+      token = uid().replace(/-/g, '');
+      await save('intakes', { id: uid(), clientId: c.id, token, createdAt: nowIso(), completedAt: null, answers: null });
+    }
+    const conn = getConnection();
+    nav(`/intake/${token}?from=app${conn ? `&api=${encodeURIComponent(conn.api)}` : ''}`);
+  };
+
   return (
     <div className="stack">
       <div className="card pad">
@@ -332,6 +345,9 @@ function FilesTab({ c }: { c: Client }) {
           </span>
           <button className="btn-sm" onClick={sendIntake}>{intake ? 'Resend' : 'Send'}</button>
         </div>
+        {!intake?.completedAt && (
+          <button className="btn btn-outline btn-block intake-here" onClick={fillHere}>Fill out on this phone</button>
+        )}
         {intake?.answers && (
           <div className="parq">
             {intake.answers.parq.some(Boolean)

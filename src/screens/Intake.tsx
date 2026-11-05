@@ -55,6 +55,8 @@ export function Intake() {
   const [params] = useSearchParams();
   const apiParam = params.get('api');
   const api = apiParam && apiParam.startsWith('https://script.google.com/') ? apiParam : null;
+  // Opened from the trainer's app ("Fill out on this phone") rather than a texted link.
+  const fromApp = params.get('from') === 'app';
   const [info, setInfo] = useState<Info | null | undefined>(undefined);
   const [parq, setParq] = useState<(boolean | null)[]>(PARQ_QUESTIONS.map(() => null));
   const [f, setF] = useState({ medicalCurrent: '', medicalPast: '', emergencyName: '', emergencyPhone: '', signature: '' });
@@ -75,6 +77,7 @@ export function Intake() {
         <span className="done-check"><Icon name="check" size={38} stroke={2.6} /></span>
         <h1 className="display">You're all set{info.firstName ? `, ${info.firstName}` : ''}</h1>
         <p className="muted">Your intake form is with {info.business}. See you at your next session.</p>
+        {fromApp && <button className="btn btn-dark" onClick={() => history.back()}>Back to the app</button>}
       </div>
     );
   }
@@ -97,6 +100,7 @@ export function Intake() {
 
   return (
     <form className="page form intake" onSubmit={go}>
+      {fromApp && <button type="button" className="back" onClick={() => history.back()}><Icon name="back" /> Back</button>}
       <div className="brand">{info.business.toUpperCase()}</div>
       <h1 className="display">Welcome, {info.firstName}</h1>
       <p className="muted">This takes about 5 minutes. Your answers go only to your trainer and are stored securely.</p>
