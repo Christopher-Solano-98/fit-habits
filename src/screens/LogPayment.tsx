@@ -6,7 +6,7 @@ import { fmtLong } from '@shared/dates.ts';
 import { mailtoHref, receiptText, smsHref } from '@shared/messages.ts';
 import { useStore } from '../data/store';
 import { nowIso, uid } from '../data/repo';
-import { Header } from '../components/ui';
+import { Header, Toggle } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { byName, money } from '../lib/util';
 
@@ -19,6 +19,10 @@ export function LogPayment() {
   const [amount, setAmount] = useState(() => String(c ? status(c).owed || c.rate : ''));
   const [paidOn, setPaidOn] = useState(today);
   const [note, setNote] = useState('');
+  // Receipts default on for today's payments and off for backlogged ones, so
+  // entering old payments doesn't send clients a pile of old receipts.
+  const [receipt, setReceipt] = useState<boolean | null>(null);
+  const sendReceipt = receipt ?? paidOn === today;
   const [done, setDone] = useState<{ p: Payment; sent: Sent } | null>(null);
 
   const pickClient = (id: string) => {
@@ -31,10 +35,10 @@ export function LogPayment() {
     e.preventDefault();
     const n = Number(amount);
     if (!c || !(n > 0)) return toast('Pick a client and enter an amount');
-    const p: Payment = { id: uid(), clientId: c.id, amount: n, paidOn, note: note || null, receiptVia: c.channel, createdAt: nowIso() };
+    const p: Payment = { id: uid(), clientId: c.id, amount: n, paidOn, note: note || null, receiptVia: sendReceipt ? c.channel : 'none', createdAt: nowIso() };
     await save('payments', p);
     let sent: Sent = { text: false, email: false };
-    if (c.channel !== 'none') {
+    if (c.channel !== 'none' && sendReceipt) {
       sent = await repo.sendNotice({ clientId: c.id, channel: c.channel, subject: `${snap.settings.businessName} receipt`, body: receiptText(c, p, snap.settings) });
     }
     setDone({ p, sent });
@@ -52,13 +56,14 @@ export function LogPayment() {
     const needText = wantText && !done.sent.text && !!c.phone;
     const needEmail = wantEmail && !done.sent.email && !!c.email;
     const sentWords = [done.sent.text && 'text', done.sent.email && 'email'].filter(Boolean).join(' and ');
+    const skipped = via !== 'none' && done.p.receiptVia === 'none';
     return (
       <div className="page done">
         <span className="done-check"><Icon name="check" size={38} stroke={2.6} /></span>
         <h1 className="display">Payment logged</h1>
         <p>{money(done.p.amount)} cash from {c.firstName} {c.lastName} · {fmtLong(done.p.paidOn)}</p>
         <div className="card pad receipt">
-          <span className="small upper">{via === 'none' ? 'Receipt (not sent: client opted out)' : sentWords ? `Receipt sent automatically by ${sentWords}` : 'Send the receipt'}</span>
+          <span className="small upper">{via === 'none' ? 'Receipt (not sent: client opted out)' : skipped ? 'No receipt sent. Send one anyway?' : sentWords ? `Receipt sent automatically by ${sentWords}` : 'Send the receipt'}</span>
           <div className="bubble">{text}</div>
           {(needText || needEmail) && (
             <div className="grid2">
@@ -66,11 +71,11 @@ export function LogPayment() {
               {needEmail && <a className="btn btn-dark" href={mailtoHref(c.email!, `${snap.settings.businessName} receipt`, text)}>Email receipt</a>}
             </div>
           )}
-          {wantText && !done.sent.text && repo.mode !== 'demo' && <span className="small">Automatic texts turn on once Twilio is set up. Until then, tap Text receipt.</span>}
-          {repo.mode === 'demo' && via !== 'none' && <span className="small">Demo mode: once your Google Sheet is connected, email receipts send on their own.</span>}
+          {wantText && !done.sent.text && repo.mode !== 'demo' && !skipped && <span className="small">Automatic texts turn on once Twilio is set up. Until then, tap Text receipt.</span>}
+          {repo.mode === 'demo' && via !== 'none' && !skipped && <span className="small">Demo mode: once your Google Sheet is connected, email receipts send on their own.</span>}
         </div>
         <div className="grid2">
-          <button className="btn btn-outline" onClick={() => { setDone(null); setNote(''); }}>Log another</button>
+          <button className="btn btn-outline" onClick={() => { setDone(null); setNote(''); setReceipt(null); }}>Log another</button>
           <Link className="btn btn-dark" to={`/clients/${c.id}?tab=pay`}>Done</Link>
         </div>
       </div>
@@ -103,6 +108,16 @@ export function LogPayment() {
         <label>Date<input type="date" value={paidOn} max={today} onChange={(e) => setPaidOn(e.target.value || today)} /></label>
         <label>Note<input value={note} placeholder="Optional" onChange={(e) => setNote(e.target.value)} /></label>
       </div>
+
+      {c && c.channel !== 'none' && (
+        <div className="card row">
+          <span className="grow">
+            <strong>Send receipt to {c.firstName}</strong>
+            <span className="small">{paidOn < today && receipt === null ? 'Off for past payments, so backlogged entries don\u2019t send old receipts' : `By ${c.channel === 'both' ? 'text and email' : c.channel}`}</span>
+          </span>
+          <Toggle on={sendReceipt} label="Send receipt" onChange={setReceipt} />
+        </div>
+      )}
 
       <button className="btn btn-block btn-lg" type="submit">Log {amount ? money(Number(amount)) : 'payment'}{c ? ` from ${c.firstName}` : ''}</button>
     </form>
