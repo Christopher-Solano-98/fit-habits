@@ -9,6 +9,7 @@ import { useStore } from '../data/store';
 import { IS_SAMPLE } from '../lib/space';
 import { Avatar, Pill, QuickText, Section } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { Brand } from '../components/Brand';
 import { byName, fullName, money, timeToMinutes } from '../lib/util';
 
 export function Home() {
@@ -47,7 +48,7 @@ export function Home() {
     <div className="page">
       <div className="topline">
         <div>
-          <div className="brand">{snap.settings.businessName.toUpperCase()}</div>
+          <Brand />
           <div className="small">{fmtDay(today)}{IS_SAMPLE ? ' · Practice (fake clients)' : repo.mode === 'demo' ? ' · Saved on this phone' : ''}</div>
         </div>
         <Link to="/settings" className="icon-btn" aria-label="Settings"><Icon name="settings" /></Link>

@@ -141,13 +141,15 @@ export function ExerciseDetail() {
 
       <form className="card pad form-inline form" onSubmit={submit}>
         <strong>Log {fmtShort(date) === fmtShort(today) ? "today's" : fmtShort(date)} numbers</strong>
-        <div className={e.kind === 'weight' ? 'grid3' : 'grid2'}>
+        <div className="grid2">
           <label>{e.kind === 'weight' ? 'Weight (lb)' : e.kind === 'reps' ? 'Reps' : 'Time (m:ss)'}
             <input inputMode={kind.time ? 'text' : 'decimal'} placeholder={kind.time ? '1:30' : ''} value={value} onChange={(ev) => setValue(ev.target.value)} />
           </label>
-          {e.kind === 'weight' && <label>Reps<input inputMode="numeric" value={reps} onChange={(ev) => setReps(ev.target.value)} /></label>}
-          <label>Date<input type="date" value={date} max={today} onChange={(ev) => setDate(ev.target.value || today)} /></label>
+          {e.kind === 'weight'
+            ? <label>Reps<input inputMode="numeric" value={reps} onChange={(ev) => setReps(ev.target.value)} /></label>
+            : <label>Date<input type="date" value={date} max={today} onChange={(ev) => setDate(ev.target.value || today)} /></label>}
         </div>
+        {e.kind === 'weight' && <label>Date<input type="date" value={date} max={today} onChange={(ev) => setDate(ev.target.value || today)} /></label>}
         <button className="btn btn-block" type="submit">Log it</button>
       </form>
 

@@ -9,6 +9,7 @@ import { useStore } from '../data/store';
 import { nowIso, uid } from '../data/repo';
 import { Empty, Header } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { Brand } from '../components/Brand';
 import { AddExerciseSheet, newSession, useAutosave } from './Workouts';
 import { decodePlan, encodePlan, type PlanPayload } from '../lib/planLink';
 import { byName, fullName } from '../lib/util';
@@ -328,7 +329,7 @@ export function PlanView() {
 
   return (
     <div className="page plan-view">
-      <div className="brand">{plan.b.toUpperCase()}</div>
+      <Brand variant="full" />
       <h1 className="display">{plan.c ? `${plan.c}'s plan` : plan.n}</h1>
       <p className="muted">{plan.n} · {weeks} weeks{plan.s ? ` · started ${fmtLong(plan.s)}` : ''}</p>
       {pos && pos.status === 'active' && <div className="card good-card">You're in week {pos.week} of {weeks}: {plan.ph[pos.phase]?.l}</div>}

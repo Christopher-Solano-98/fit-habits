@@ -26,9 +26,9 @@ export const METRICS: MetricDef[] = [
   { key: 'chest', label: 'Chest', unit: 'in', group: 'Measurements', better: 'up', step: 0.25 },
   { key: 'arm', label: 'Arm', unit: 'in', group: 'Measurements', better: 'up', step: 0.25 },
   { key: 'thigh', label: 'Thigh', unit: 'in', group: 'Measurements', better: 'down', step: 0.25 },
-  { key: 'restingHr', label: 'Resting heart rate', unit: 'bpm', group: 'Health', better: 'down', step: 1 },
-  { key: 'systolic', label: 'Blood pressure (top)', unit: 'mmHg', group: 'Health', better: 'down', step: 1 },
-  { key: 'diastolic', label: 'Blood pressure (bottom)', unit: 'mmHg', group: 'Health', better: 'down', step: 1 },
+  { key: 'restingHr', label: 'Resting HR', unit: 'bpm', group: 'Health', better: 'down', step: 1 },
+  { key: 'systolic', label: 'BP top', unit: 'mmHg', group: 'Health', better: 'down', step: 1 },
+  { key: 'diastolic', label: 'BP bottom', unit: 'mmHg', group: 'Health', better: 'down', step: 1 },
 ];
 
 export const METRIC_GROUPS = ['Body', 'Measurements', 'Health'] as const;

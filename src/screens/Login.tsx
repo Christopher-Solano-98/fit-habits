@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { supabase } from '../data/supabase';
+import { Brand } from '../components/Brand';
 
 // Password sign-in (not magic links): an app saved to the iPhone Home Screen
 // keeps its own storage, so an emailed link would sign in Safari instead.
@@ -25,7 +26,7 @@ export function Login() {
 
   return (
     <form className="page form login" onSubmit={go}>
-      <div className="brand">FIT HABITS</div>
+      <Brand variant="full" />
       <h1 className="display">Sign in</h1>
       <label>Email<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
       <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>

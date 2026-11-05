@@ -7,7 +7,7 @@
   --line: #E0DED7;
   --line-soft: #F1EFEA;
   --seg: #E7E5DF;
-  --green: #17663F;
+  --green: #2F6B35;
   --green-ink: #145C38;
   --green-tint: #E2F0E7;
   --warn-ink: #8F3F00;
@@ -308,3 +308,16 @@ select.inline-select { width: auto; height: 40px; line-height: 40px; }
 .plan-ex span:first-child { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--green-ink); text-decoration: underline; text-underline-offset: 3px; }
 .plan-dose { font-size: 14px; text-align: right; max-width: 45%; }
 .day-title { font-size: 16px; }
+
+.brand-logo { display: block; width: auto; }
+.brand-mark { height: 40px; margin-bottom: 4px; }
+.brand-full { height: 76px; margin-bottom: 4px; }
+
+/* iPhone Safari: center date/time values vertically and keep them on one line. */
+input[type=date], input[type=time] { padding: 11px 12px !important; line-height: 24px; height: 46px; }
+input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value {
+  line-height: 24px; min-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.form input.inline-select[type=date] { padding: 8px 10px !important; height: 40px; }
+/* Side-by-side fields: label on top, box on the bottom, so boxes line up even when a label wraps. */
+.form .grid2 > label, .form .grid3 > label { justify-content: space-between; }

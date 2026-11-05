@@ -6,6 +6,7 @@ import { DEFAULT_WAIVER, signedWaiverHtml } from '@shared/waiver.ts';
 import { localRepo } from '../data/local';
 import { fileToBase64, gasCall } from '../data/connection';
 import { Icon } from '../components/Icon';
+import { Brand } from '../components/Brand';
 
 // Public page a client opens from the texted link. It never sees the trainer's
 // data: in cloud mode it talks only to the `intake` Edge Function, which checks
@@ -107,7 +108,7 @@ export function Intake() {
   return (
     <form className="page form intake" onSubmit={go}>
       {fromApp && <button type="button" className="back" onClick={() => history.back()}><Icon name="back" /> Back</button>}
-      <div className="brand">{info.business.toUpperCase()}</div>
+      <Brand variant="full" />
       <h1 className="display">Welcome, {info.firstName}</h1>
       <p className="muted">This takes about 5 minutes. Your answers go only to your trainer and are stored securely.</p>
 
