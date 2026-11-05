@@ -5,7 +5,7 @@
 
 create table public.settings (
   owner_id uuid primary key default auth.uid() references auth.users on delete cascade,
-  trainer_name text not null default 'Coach',
+  trainer_name text not null default 'Tony',
   business_name text not null default 'Fit Habits',
   email text not null default '',
   phone text not null default '',

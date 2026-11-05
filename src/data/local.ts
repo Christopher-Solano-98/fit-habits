@@ -1,10 +1,12 @@
 import type { ClientFile, FileKind, Settings, Snapshot, TableName } from '@shared/types.ts';
 import { nowIso, uid, type Repo, type Row } from './repo';
 import { emptySnapshot, sampleSnapshot } from './samples';
+import { IS_SAMPLE } from '../lib/space';
 
 // Demo mode: everything lives in this browser. Records go in localStorage,
 // uploaded files in IndexedDB (localStorage is too small for photos and PDFs).
-const KEY = 'fithabits.demo.v1';
+// v2: the main app starts with a clean slate (v1 started with sample clients).
+const KEY = IS_SAMPLE ? 'fithabits.sample.v2' : 'fithabits.demo.v2';
 
 function read(): Snapshot | null {
   try {
@@ -21,7 +23,7 @@ function write(s: Snapshot) {
 
 function blobs(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('fithabits-files', 1);
+    const req = indexedDB.open(IS_SAMPLE ? 'fithabits-sample-files' : 'fithabits-files', 1);
     req.onupgradeneeded = () => req.result.createObjectStore('files');
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -47,7 +49,7 @@ export function dropClientRows(s: Snapshot, clientId: string) {
 }
 
 export function localRepo(): Repo {
-  let snap = read() ?? sampleSnapshot();
+  let snap = read() ?? (IS_SAMPLE ? sampleSnapshot() : emptySnapshot());
   write(snap);
 
   const mutate = (fn: (s: Snapshot) => void) => {

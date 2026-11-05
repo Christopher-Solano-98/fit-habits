@@ -5,6 +5,7 @@ import { needsAttention, sumPayments } from '@shared/billing.ts';
 import { addDays, addMonths, fmtDay, fmtLong, fmtShort, fmtTime, startOfWeek, weekday, WEEKDAYS } from '@shared/dates.ts';
 import { change, series } from '@shared/metrics.ts';
 import { useStore } from '../data/store';
+import { IS_SAMPLE } from '../lib/space';
 import { Avatar, Pill, QuickText, Section } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { byName, fullName, money, timeToMinutes } from '../lib/util';
@@ -46,7 +47,7 @@ export function Home() {
       <div className="topline">
         <div>
           <div className="brand">{snap.settings.businessName.toUpperCase()}</div>
-          <div className="small">{fmtDay(today)}{repo.mode === 'demo' ? ' · Demo mode' : ''}</div>
+          <div className="small">{fmtDay(today)}{IS_SAMPLE ? ' · Practice (fake clients)' : repo.mode === 'demo' ? ' · Saved on this phone' : ''}</div>
         </div>
         <Link to="/settings" className="icon-btn" aria-label="Settings"><Icon name="settings" /></Link>
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Settings as S } from '@shared/types.ts';
 import { useStore } from '../data/store';
+import { IS_SAMPLE } from '../lib/space';
 import { supabase } from '../data/supabase';
 import { parseConnectionCode, saveConnection } from '../data/connection';
 import { Header } from '../components/ui';
@@ -41,16 +42,18 @@ export function Settings() {
 
       <fieldset>
         <legend>Data</legend>
-        {repo.mode === 'demo' ? (
+        {IS_SAMPLE ? (
           <>
-            <p className="small">Demo mode: everything is saved on this device only, with sample clients. Connect your Google Sheet to use real data.</p>
+            <p className="small">This is the practice copy, filled with fake clients. Nothing here reaches the real app. Reset it any time.</p>
+            <button className="btn btn-outline btn-block" onClick={async () => { if (confirm('Reset the practice copy back to the original fake clients?')) { await repo.reset(true); await reload(); toast('Practice data reset'); } }}>Reset practice data</button>
+          </>
+        ) : repo.mode === 'demo' ? (
+          <>
+            <p className="small">Everything is saved on this phone only. Connect your Google Sheet to back it up and turn on automatic emails.</p>
             <label>Connection code (from Apps Script)<textarea rows={3} value={code} onChange={(e) => { setCode(e.target.value); setCodeErr(''); }} placeholder="Paste the code here" /></label>
             {codeErr && <p className="warn-text small">{codeErr}</p>}
             <button className="btn btn-block" disabled={!code.trim()} onClick={connect}>Connect Google Sheet</button>
-            <div className="grid2">
-              <button className="btn btn-outline" onClick={async () => { if (confirm('Replace everything with sample clients?')) { await repo.reset(true); await reload(); toast('Sample data loaded'); } }}>Load sample data</button>
-              <button className="btn btn-outline danger" onClick={async () => { if (confirm('Erase all data on this device and start fresh?')) { await repo.reset(false); await reload(); toast('Started fresh'); } }}>Start fresh</button>
-            </div>
+            <button className="btn btn-outline btn-block danger" onClick={async () => { if (confirm('Erase everything on this phone and start fresh?')) { await repo.reset(false); await reload(); toast('Started fresh'); } }}>Erase and start fresh</button>
           </>
         ) : repo.mode === 'sheets' ? (
           <>

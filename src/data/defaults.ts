@@ -4,7 +4,7 @@ import { nowIso, uid } from './repo';
 export function defaultSettings(): Settings {
   return {
     id: 'settings',
-    trainerName: 'Coach',
+    trainerName: 'Tony',
     businessName: 'Fit Habits',
     email: '',
     phone: '',

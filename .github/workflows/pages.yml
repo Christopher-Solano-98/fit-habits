@@ -30,6 +30,11 @@ jobs:
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+      # Practice copy with fake clients, at /<repo>/sample/
+      - run: npx vite build --outDir dist/sample
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/sample/
+          VITE_SPACE: sample
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
