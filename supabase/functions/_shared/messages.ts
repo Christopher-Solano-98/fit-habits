@@ -22,7 +22,7 @@ export function fillTemplate(body: string, c: Client, s: Pick<Settings, 'busines
 }
 
 export function receiptText(c: Client, p: Payment, s: Pick<Settings, 'businessName' | 'trainerName'>): string {
-  return `${s.businessName}: We received your $${p.amount} cash payment on ${fmtLong(p.paidOn)}. Thank you, ${c.firstName}! You look like your habits.`;
+  return `${s.businessName}: We received your $${p.amount} cash payment on ${fmtLong(p.paidOn)}. Thank you, ${c.firstName}!`;
 }
 
 export function digits(phone: string): string {

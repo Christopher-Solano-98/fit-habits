@@ -307,7 +307,7 @@ var FH = (() => {
     return body.replace(/\{(\w+)\}/g, (m, k) => k in vars ? vars[k] : m);
   }
   function receiptText(c, p, s) {
-    return `${s.businessName}: We received your $${p.amount} cash payment on ${fmtLong(p.paidOn)}. Thank you, ${c.firstName}! You look like your habits.`;
+    return `${s.businessName}: We received your $${p.amount} cash payment on ${fmtLong(p.paidOn)}. Thank you, ${c.firstName}!`;
   }
   function digits(phone) {
     const d = phone.replace(/\D/g, "");
