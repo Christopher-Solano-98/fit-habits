@@ -1,5 +1,5 @@
 import type { Client, Payment, Settings } from './types.ts';
-import { fmtShort, WEEKDAYS_SHORT } from './dates.ts';
+import { fmtLong, WEEKDAYS_SHORT } from './dates.ts';
 
 export function scheduleText(c: Client): string {
   if (!c.sessionDays.length) return 'No set schedule';
@@ -22,7 +22,7 @@ export function fillTemplate(body: string, c: Client, s: Pick<Settings, 'busines
 }
 
 export function receiptText(c: Client, p: Payment, s: Pick<Settings, 'businessName' | 'trainerName'>): string {
-  return `${s.businessName}: Got your $${p.amount} cash payment on ${fmtShort(p.paidOn)}. Thank you, ${c.firstName}! You look like your habits.`;
+  return `${s.businessName}: We received your $${p.amount} cash payment on ${fmtLong(p.paidOn)}. Thank you, ${c.firstName}! You look like your habits.`;
 }
 
 export function digits(phone: string): string {
