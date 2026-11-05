@@ -4,6 +4,7 @@ import { payStatus, type PayStatus } from '@shared/billing.ts';
 import { todayIso } from '@shared/dates.ts';
 import type { Repo, Row } from './repo';
 import { dropClientRows } from './local';
+import { saveConnection } from './connection';
 
 interface Store {
   repo: Repo;
@@ -106,8 +107,11 @@ export function StoreProvider({ repo, children }: { repo: Repo; children: ReactN
     return (
       <div className="center-screen">
         <p className="muted">Couldn't load your data.</p>
-        <p className="small">{error}</p>
+        <p className="small">{/load failed|failed to fetch|network/i.test(error) ? "Couldn't reach your Google script. Check the phone's internet, or re-enter the connection code." : error}</p>
         <button className="btn" onClick={reload}>Try again</button>
+        {repo.mode === 'sheets' && (
+          <button className="btn btn-outline" onClick={() => { saveConnection(null); location.hash = '#/settings'; location.reload(); }}>Re-enter connection code</button>
+        )}
       </div>
     );
   }

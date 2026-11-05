@@ -13,14 +13,40 @@ export function Settings() {
   const [s, setS] = useState<S>(snap.settings);
   const [code, setCode] = useState('');
   const [codeErr, setCodeErr] = useState('');
-  const connect = () => {
+  const [execUrl, setExecUrl] = useState('');
+  const [needUrl, setNeedUrl] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const connect = async () => {
+    setCodeErr('');
+    let conn;
     try {
-      saveConnection(parseConnectionCode(code));
-      location.hash = '#/';
-      location.reload();
+      conn = parseConnectionCode(code);
     } catch (e) {
-      setCodeErr((e as Error).message);
+      return setCodeErr((e as Error).message);
     }
+    // Apps Script sometimes hands out the /dev test address, which only works for
+    // someone signed into the owner's Google account. Phones need the /exec address.
+    const url = execUrl.trim();
+    if (url) {
+      if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) return setCodeErr('The Web app URL should start with https://script.google.com/macros/s/ and end with /exec.');
+      conn = { ...conn, api: url };
+    } else if (/\/dev$/.test(conn.api)) {
+      setNeedUrl(true);
+      return setCodeErr('This code points to the test address (ends in /dev), which only works on the laptop. Paste the Web app URL below: Apps Script → Deploy → Manage deployments → Web app URL (ends in /exec).');
+    }
+    setConnecting(true);
+    try {
+      await gasCall(conn.api, { action: 'status', key: conn.key });
+    } catch (e) {
+      setConnecting(false);
+      const msg = (e as Error).message;
+      return setCodeErr(/load failed|failed to fetch|network/i.test(msg)
+        ? "Couldn't reach the Google script. In Apps Script: Deploy → Manage deployments → the web app must say Execute as: Me and Who has access: Anyone. Then try again."
+        : msg);
+    }
+    saveConnection(conn);
+    location.hash = '#/';
+    location.reload();
   };
   const field = (k: 'trainerName' | 'businessName' | 'email' | 'phone') => ({ value: s[k], onChange: (e: { target: { value: string } }) => setS({ ...s, [k]: e.target.value }) });
 
@@ -60,8 +86,9 @@ export function Settings() {
           <>
             <p className="small">Everything is saved on this phone only. Connect your Google Sheet to back it up and turn on automatic emails.</p>
             <label>Connection code (from Apps Script)<textarea rows={3} value={code} onChange={(e) => { setCode(e.target.value); setCodeErr(''); }} placeholder="Paste the code here" /></label>
+            {needUrl && <label>Web app URL (ends in /exec)<input value={execUrl} placeholder="https://script.google.com/macros/s/…/exec" onChange={(e) => { setExecUrl(e.target.value); setCodeErr(''); }} /></label>}
             {codeErr && <p className="warn-text small">{codeErr}</p>}
-            <button className="btn btn-block" disabled={!code.trim()} onClick={connect}>Connect Google Sheet</button>
+            <button className="btn btn-block" disabled={!code.trim() || connecting} onClick={connect}>{connecting ? 'Checking connection…' : 'Connect Google Sheet'}</button>
             <button className="btn btn-outline btn-block danger" onClick={async () => { if (confirm('Erase everything on this phone and start fresh?')) { await repo.reset(false); await reload(); toast('Started fresh'); } }}>Erase and start fresh</button>
           </>
         ) : repo.mode === 'sheets' ? (

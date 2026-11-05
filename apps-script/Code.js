@@ -63,8 +63,13 @@ function setup() {
 
 /** Run after deploying: logs the code to paste into the app's Settings → Connect. */
 function connectionCode() {
-  var url = ScriptApp.getService().getUrl();
+  // getUrl() can return the /dev test address, which only works for the owner.
+  // Paste the /exec Web app URL into Project Settings → Script properties as WEBAPP_URL to override.
+  var url = PROPS.getProperty('WEBAPP_URL') || ScriptApp.getService().getUrl();
   if (!url) throw new Error('Deploy the web app first (Deploy → New deployment → Web app).');
+  if (/\/dev$/.test(url)) {
+    Logger.log('The web app address ends in /dev (test only). Copy the Web app URL ending in /exec from Deploy → Manage deployments, add it in Project Settings → Script properties as WEBAPP_URL, then run connectionCode again. (Or paste the code in the app and it will ask for the /exec URL.)');
+  }
   var code = Utilities.base64EncodeWebSafe(JSON.stringify({ api: url, key: PROPS.getProperty('APP_KEY') }));
   Logger.log('Connection code (keep it private — it unlocks your client data):\n\n' + code);
   return code;
