@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { Channel, Motivation, Template } from '@shared/types.ts';
+import type { Channel, Client, Motivation, Template } from '@shared/types.ts';
 import { fmtShort, fmtTime, WEEKDAYS } from '@shared/dates.ts';
-import { smsHref } from '@shared/messages.ts';
+import { motivationReach, motivationRecipients, smsHref } from '@shared/messages.ts';
+import { byName, fullName } from '../lib/util';
 import { useStore } from '../data/store';
 import { nowIso, uid } from '../data/repo';
 import { Header, Section, Seg, Toggle } from '../components/ui';
@@ -16,13 +17,27 @@ export function Messages() {
   const [editing, setEditing] = useState<Motivation | Template | null>(null);
   const [editKind, setEditKind] = useState<'motivation' | 'template'>('motivation');
 
+  const [draft, setDraft] = useState(next?.body ?? '');
+  const [draftFor, setDraftFor] = useState(next?.id);
+  const [listOpen, setListOpen] = useState(false);
+  if (next?.id !== draftFor) { setDraftFor(next?.id); setDraft(next?.body ?? ''); }
+
   const setMotivation = (patch: Partial<typeof m>) => saveSettings({ ...s, motivation: { ...m, ...patch } });
-  const active = snap.clients.filter((c) => c.active && c.channel !== 'none');
+  const active = snap.clients.filter((c) => c.active);
+  const recipients = motivationRecipients(active, m);
+  const dirty = draft.trim() !== (next?.body ?? '').trim();
+
+  const saveDraft = () => {
+    const body = draft.trim();
+    if (!body) return toast('Type a message first');
+    save('motivations', next ? { ...next, body } : { id: uid(), body, sentOn: null, createdAt: nowIso() });
+    toast(`Saved. This goes out ${WEEKDAYS[m.weekday]} at ${fmtTime(m.time)}.`);
+  };
 
   const copyNext = async () => {
-    if (!next) return;
-    await navigator.clipboard?.writeText(next.body);
-    toast('Copied. Paste it into a group text or your story.');
+    if (!draft.trim()) return;
+    await navigator.clipboard?.writeText(draft.trim());
+    toast('Copied. Paste it into your story or a post.');
   };
 
   return (
@@ -34,7 +49,22 @@ export function Messages() {
           <span className="grow eyebrow">Weekly motivation</span>
           <Toggle on={m.enabled} label="Weekly motivation" onChange={(v) => setMotivation({ enabled: v })} />
         </div>
-        {next ? <p className="quote">"{next.body}"</p> : <p className="muted">Add a message to the library below.</p>}
+        <label className="on-dark composer">This week's message
+          <textarea rows={4} value={draft} placeholder="Type this week's motivation…" onChange={(e) => setDraft(e.target.value)} />
+        </label>
+        <div className="row-plain">
+          <span className="grow small on-dark">{draft.length} characters{draft.length > 160 ? ' · sends as more than one text' : ''}</span>
+          {dirty && <button className="btn-sm" onClick={saveDraft}>Save message</button>}
+        </div>
+        <button className="recipients-btn" onClick={() => setListOpen(true)}>
+          <Icon name="users" size={18} />
+          <span className="grow">
+            <strong>Goes to {recipients.length} of {active.length} client{active.length === 1 ? '' : 's'}</strong>
+            <span className="small on-dark">{recipients.length ? recipients.slice(0, 3).map((c) => c.firstName).join(', ') + (recipients.length > 3 ? ` +${recipients.length - 3} more` : '') : 'Nobody yet: tap to choose'}</span>
+          </span>
+          <span className="small on-dark">Edit list</span>
+          <Icon name="chevron" size={16} />
+        </button>
         <div className="grid2">
           <label className="on-dark">Day
             <select value={m.weekday} onChange={(e) => setMotivation({ weekday: Number(e.target.value) })}>
@@ -44,9 +74,9 @@ export function Messages() {
           <label className="on-dark">Time<input type="time" value={m.time} onChange={(e) => setMotivation({ time: e.target.value })} /></label>
         </div>
         <Seg<Channel> dark value={m.channel} options={[['text', 'Text'], ['email', 'Email'], ['both', 'Both']]} onChange={(v) => setMotivation({ channel: v })} />
-        <span className="small on-dark">{m.enabled ? `Goes to ${active.length} active clients every ${WEEKDAYS[m.weekday]} at ${fmtTime(m.time)}.` : 'Paused.'} {repo.mode === 'demo' ? 'Automatic sending turns on once texting and email are set up.' : ''}</span>
+        <span className="small on-dark">{m.enabled ? `Sends every ${WEEKDAYS[m.weekday]} at ${fmtTime(m.time)}. Each client gets their own message; nobody sees the others.` : 'Paused.'} {repo.mode === 'demo' ? 'Automatic sending turns on once your Google account is connected.' : ''}</span>
         <div className="grid2">
-          {s.phone ? <a className="btn btn-outline-dark" href={next ? smsHref(s.phone, next.body) : undefined}>Text me a test</a> : <button className="btn btn-outline-dark" onClick={() => toast('Add your phone number in Settings')}>Text me a test</button>}
+          {s.phone ? <a className="btn btn-outline-dark" href={draft.trim() ? smsHref(s.phone, draft.trim()) : undefined}>Text me a test</a> : <button className="btn btn-outline-dark" onClick={() => toast('Add your phone number in Settings')}>Text me a test</button>}
           <button className="btn btn-light" onClick={copyNext}>Copy message</button>
         </div>
       </div>
@@ -101,6 +131,8 @@ export function Messages() {
         </div>
       </Section>
 
+      {listOpen && <RecipientsSheet onClose={() => setListOpen(false)} />}
+
       {editing && (
         <EditSheet
           kind={editKind}
@@ -110,6 +142,54 @@ export function Messages() {
           onDelete={() => { del(editKind === 'motivation' ? 'motivations' : 'templates', editing.id); setEditing(null); toast('Deleted'); }}
         />
       )}
+    </div>
+  );
+}
+
+/** The weekly distribution list: every active client, with a check to take them off (or put them back). */
+function RecipientsSheet({ onClose }: { onClose: () => void }) {
+  const { snap, saveSettings } = useStore();
+  const s = snap.settings;
+  const m = s.motivation;
+  const excluded = m.excluded ?? [];
+  const clients = snap.clients.filter((c) => c.active).sort(byName);
+  const setExcluded = (ids: string[]) => saveSettings({ ...s, motivation: { ...m, excluded: ids } });
+  const on = clients.filter((c) => !excluded.includes(c.id) && motivationReach(c, m).reason === null).length;
+  const how = (c: Client) => {
+    const r = motivationReach(c, m);
+    return r.reason ?? [r.text && 'Text', r.email && 'Email'].filter(Boolean).join(' + ');
+  };
+
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" role="dialog" aria-label="Weekly motivation list" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>Weekly list</strong>
+          <span className="small">{on} of {clients.length} on</span>
+        </div>
+        <p className="small">Everyone is on the list by default, including clients you add later. Uncheck anyone who shouldn't get it.</p>
+        <div className="grid2">
+          <button className="btn-sm btn-outline" onClick={() => setExcluded([])}>Select all</button>
+          <button className="btn-sm btn-outline" onClick={() => setExcluded(clients.map((c) => c.id))}>Clear all</button>
+        </div>
+        {clients.length === 0 && <p className="muted">No clients yet. Add clients and they'll show up here.</p>}
+        <div className="card">
+          {clients.map((c) => {
+            const reason = motivationReach(c, m).reason;
+            const checked = !excluded.includes(c.id);
+            return (
+              <label key={c.id} className="row check-list">
+                <input type="checkbox" checked={checked} onChange={() => setExcluded(checked ? [...excluded, c.id] : excluded.filter((id) => id !== c.id))} />
+                <span className="grow">
+                  <strong>{fullName(c)}</strong>
+                  <span className={`small${reason && checked ? ' warn-text' : ''}`}>{reason && checked ? `Won't receive it: ${reason.toLowerCase()}` : how(c)}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <button className="btn btn-block" onClick={onClose}>Done</button>
+      </div>
     </div>
   );
 }

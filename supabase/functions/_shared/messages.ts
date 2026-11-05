@@ -21,6 +21,35 @@ export function fillTemplate(body: string, c: Client, s: Pick<Settings, 'busines
   return body.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
 }
 
+export interface Reach {
+  text: boolean;
+  email: boolean;
+  /** Why this client won't get the weekly motivation, or null if they will. */
+  reason: string | null;
+}
+
+/** Whether the weekly motivation can reach a client, given both sides' text/email choice. */
+export function motivationReach(c: Client, m: Settings['motivation']): Reach {
+  const none = (reason: string): Reach => ({ text: false, email: false, reason });
+  if (!c.active) return none('Inactive client');
+  if (c.channel === 'none') return none('Opted out of messages');
+  const sendText = m.channel === 'text' || m.channel === 'both';
+  const sendEmail = m.channel === 'email' || m.channel === 'both';
+  const takesText = c.channel === 'text' || c.channel === 'both';
+  const takesEmail = c.channel === 'email' || c.channel === 'both';
+  const text = sendText && takesText && !!c.phone;
+  const email = sendEmail && takesEmail && !!c.email;
+  if (text || email) return { text, email, reason: null };
+  if (!(sendText && takesText) && !(sendEmail && takesEmail)) return none(`Gets messages by ${c.channel}; this goes by ${m.channel}`);
+  return none(sendText && takesText ? 'No phone number on file' : 'No email on file');
+}
+
+/** Clients who will actually receive the weekly motivation. */
+export function motivationRecipients(clients: Client[], m: Settings['motivation']): Client[] {
+  const excluded = m.excluded ?? [];
+  return clients.filter((c) => !excluded.includes(c.id) && motivationReach(c, m).reason === null);
+}
+
 export function receiptText(c: Client, p: Payment, s: Pick<Settings, 'businessName' | 'trainerName'>): string {
   return `${s.businessName}: We received your $${p.amount} cash payment on ${fmtLong(p.paidOn)}. Thank you, ${c.firstName}!`;
 }

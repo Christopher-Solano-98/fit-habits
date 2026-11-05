@@ -4,6 +4,7 @@ import type { Client } from '@shared/types.ts';
 import { needsAttention, sumPayments } from '@shared/billing.ts';
 import { addDays, addMonths, fmtDay, fmtLong, fmtShort, fmtTime, startOfWeek, weekday, WEEKDAYS } from '@shared/dates.ts';
 import { change, series } from '@shared/metrics.ts';
+import { motivationRecipients } from '@shared/messages.ts';
 import { useStore } from '../data/store';
 import { IS_SAMPLE } from '../lib/space';
 import { Avatar, Pill, QuickText, Section } from '../components/ui';
@@ -144,7 +145,7 @@ export function Home() {
         <span className="win-icon"><Icon name="bolt" size={18} /></span>
         <span className="grow">
           <strong>{m.enabled ? 'Friday motivation' : 'Weekly motivation is off'}</strong>
-          <span className="small">{m.enabled ? `${daysToSend === 0 ? 'Goes out today' : `Next: ${WEEKDAYS[m.weekday]}`} at ${fmtTime(m.time)} · ${active.length} clients` : 'Turn it on in Messages'}</span>
+          <span className="small">{m.enabled ? `${daysToSend === 0 ? 'Goes out today' : `Next: ${WEEKDAYS[m.weekday]}`} at ${fmtTime(m.time)} · ${motivationRecipients(active, m).length} on the list` : 'Turn it on in Messages'}</span>
         </span>
         <Icon name="chevron" size={18} />
       </Link>

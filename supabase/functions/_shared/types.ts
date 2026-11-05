@@ -116,7 +116,8 @@ export interface Settings {
   businessName: string;
   email: string;
   phone: string;
-  motivation: { enabled: boolean; weekday: number; time: string; channel: Channel };
+  /** excluded: clients taken off the weekly list (everyone else, including new clients, is on it). */
+  motivation: { enabled: boolean; weekday: number; time: string; channel: Channel; excluded?: string[] };
   alerts: { missedPayments: boolean; graceDays: number; emailTime: string };
   reports: { weekly: boolean; biweekly: boolean; monthly: boolean };
   scanReminderMonths: number;

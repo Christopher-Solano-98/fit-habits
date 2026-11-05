@@ -7,6 +7,7 @@ import type { Client, Measurement, Motivation, Payment, Settings } from '../_sha
 import { needsAttention, payStatus, sumPayments } from '../_shared/billing.ts';
 import { addDays, addMonths, endOfMonth, fmtShort, startOfMonth, startOfWeek } from '../_shared/dates.ts';
 import { series } from '../_shared/metrics.ts';
+import { motivationReach, motivationRecipients } from '../_shared/messages.ts';
 import { admin, fromRow, json, localNow } from '../_lib/db.ts';
 import { sendEmail, sendSms } from '../_lib/send.ts';
 
@@ -56,11 +57,10 @@ async function runFor(s: Settings & { ownerId: string }, now: Date) {
     const { data } = await db.from('motivations').select('*').eq('owner_id', owner).order('sent_on', { ascending: true, nullsFirst: true }).order('created_at').limit(1);
     const msg = data?.[0] ? fromRow<Motivation>(data[0]) : null;
     if (msg) {
-      for (const c of active) {
-        const wantText = (m.channel === 'text' || m.channel === 'both') && (c.channel === 'text' || c.channel === 'both');
-        const wantEmail = (m.channel === 'email' || m.channel === 'both') && (c.channel === 'email' || c.channel === 'both');
-        if (wantText && c.phone) await log(owner, 'motivation', 'text', c.phone, msg.body, await sendSms(c.phone, msg.body), t.date, c.id);
-        if (wantEmail && c.email) await log(owner, 'motivation', 'email', c.email, msg.body, await sendEmail(c.email, `Your ${s.businessName} motivation`, `Hey ${c.firstName},\n\n${msg.body}\n\n- ${s.trainerName}`, s.email), t.date, c.id);
+      for (const c of motivationRecipients(active, m)) {
+        const reach = motivationReach(c, m);
+        if (reach.text && c.phone) await log(owner, 'motivation', 'text', c.phone, msg.body, await sendSms(c.phone, msg.body), t.date, c.id);
+        if (reach.email && c.email) await log(owner, 'motivation', 'email', c.email, msg.body, await sendEmail(c.email, `Your ${s.businessName} motivation`, `Hey ${c.firstName},\n\n${msg.body}\n\n- ${s.trainerName}`, s.email), t.date, c.id);
       }
       await db.from('motivations').update({ sent_on: t.date }).eq('id', msg.id);
       done.push('motivation');

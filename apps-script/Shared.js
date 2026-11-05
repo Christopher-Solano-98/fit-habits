@@ -46,6 +46,8 @@ var FH = (() => {
     inRange: () => inRange,
     mailtoHref: () => mailtoHref,
     metric: () => metric,
+    motivationReach: () => motivationReach,
+    motivationRecipients: () => motivationRecipients,
     needsAttention: () => needsAttention,
     parseValue: () => parseValue,
     payStatus: () => payStatus,
@@ -305,6 +307,25 @@ var FH = (() => {
       ...extra
     };
     return body.replace(/\{(\w+)\}/g, (m, k) => k in vars ? vars[k] : m);
+  }
+  function motivationReach(c, m) {
+    const none = (reason) => ({ text: false, email: false, reason });
+    if (!c.active) return none("Inactive client");
+    if (c.channel === "none") return none("Opted out of messages");
+    const sendText = m.channel === "text" || m.channel === "both";
+    const sendEmail = m.channel === "email" || m.channel === "both";
+    const takesText = c.channel === "text" || c.channel === "both";
+    const takesEmail = c.channel === "email" || c.channel === "both";
+    const text = sendText && takesText && !!c.phone;
+    const email = sendEmail && takesEmail && !!c.email;
+    if (text || email) return { text, email, reason: null };
+    if (!(sendText && takesText) && !(sendEmail && takesEmail)) return none(`Gets messages by ${c.channel}; this goes by ${m.channel}`);
+    return none(sendText && takesText ? "No phone number on file" : "No email on file");
+  }
+  function motivationRecipients(clients, m) {
+    var _a;
+    const excluded = (_a = m.excluded) != null ? _a : [];
+    return clients.filter((c) => !excluded.includes(c.id) && motivationReach(c, m).reason === null);
   }
   function receiptText(c, p, s) {
     return `${s.businessName}: We received your $${p.amount} cash payment on ${fmtLong(p.paidOn)}. Thank you, ${c.firstName}!`;

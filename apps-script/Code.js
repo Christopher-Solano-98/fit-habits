@@ -415,11 +415,10 @@ function hourly() {
     var lib = readTable_('motivations').sort(function (a, b) { return (a.sentOn || '') < (b.sentOn || '') ? -1 : 1; });
     var msg = lib[0];
     if (msg) {
-      active.forEach(function (c) {
-        var wantText = (m.channel === 'text' || m.channel === 'both') && (c.channel === 'text' || c.channel === 'both');
-        var wantEmail = (m.channel === 'email' || m.channel === 'both') && (c.channel === 'email' || c.channel === 'both');
-        if (wantText && c.phone && twilioReady_()) log_('motivation', 'text', c.phone, msg.body, sendText_(c.phone, msg.body), t.date, c.id);
-        if (wantEmail && c.email) log_('motivation', 'email', c.email, msg.body, sendEmail_(c.email, 'Your ' + s.businessName + ' motivation', 'Hey ' + c.firstName + ',\n\n' + msg.body + '\n\n- ' + s.trainerName, s), t.date, c.id);
+      FH.motivationRecipients(active, m).forEach(function (c) {
+        var reach = FH.motivationReach(c, m);
+        if (reach.text && twilioReady_()) log_('motivation', 'text', c.phone, msg.body, sendText_(c.phone, msg.body), t.date, c.id);
+        if (reach.email) log_('motivation', 'email', c.email, msg.body, sendEmail_(c.email, 'Your ' + s.businessName + ' motivation', 'Hey ' + c.firstName + ',\n\n' + msg.body + '\n\n- ' + s.trainerName, s), t.date, c.id);
       });
       msg.sentOn = t.date;
       put_('motivations', msg);
