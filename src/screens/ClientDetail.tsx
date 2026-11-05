@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { Client, ClientFile, FileKind, Goal, MetricKey } from '@shared/types.ts';
 import { addMonths, ageOn, fmtLong, fmtShort } from '@shared/dates.ts';
-import { change, fmtValue, goalProgress, metric, METRICS, parseValue, series } from '@shared/metrics.ts';
+import { change, changeWith, fmtValue, fmtWith, goalProgress, isMetric, metric, METRICS, parseWith, series, type TrackDef } from '@shared/metrics.ts';
+import { exerciseDef, exerciseSeries, fmtLog, trackDef, trackedExercises, trackSeries } from '@shared/exercises.ts';
 import { scheduleText, smsHref, telHref } from '@shared/messages.ts';
 import { PARQ_QUESTIONS } from '@shared/parq.ts';
 import { useStore } from '../data/store';
@@ -105,55 +106,56 @@ function PaymentsTab({ c }: { c: Client }) {
 
 function ProgressTab({ c }: { c: Client }) {
   const { snap, save, del, toast, today } = useStore();
-  const tracked = useMemo(() => METRICS.filter((m) => series(snap.measurements, c.id, m.key).length > 0), [snap.measurements, c.id]);
+  const custom = snap.exercises;
+  const body = useMemo(() => METRICS.filter((m) => series(snap.measurements, c.id, m.key).length > 0), [snap.measurements, c.id]);
+  const exercises = useMemo(() => trackedExercises(snap.exerciseLogs, c.id, custom), [snap.exerciseLogs, c.id, custom]);
   const [sel, setSel] = useState<MetricKey | null>(null);
   const [addingGoal, setAddingGoal] = useState(false);
-  const key = sel && tracked.some((m) => m.key === sel) ? sel : tracked[0]?.key;
+  const key = sel && body.some((m) => m.key === sel) ? sel : body[0]?.key;
   const goals = snap.goals.filter((g) => g.clientId === c.id);
   const history = snap.measurements.filter((m) => m.clientId === c.id).sort((a, b) => (a.takenOn < b.takenOn ? 1 : -1));
   const scanPts = series(snap.measurements, c.id, 'bodyFat');
   const nextScan = scanPts.length ? addMonths(scanPts[scanPts.length - 1].date, snap.settings.scanReminderMonths) : null;
+  const defs: TrackDef[] = [...body, ...exercises.map(exerciseDef)];
+  const pointsFor = (k: string) => trackSeries(k, c.id, snap.measurements, snap.exerciseLogs);
 
   const shareText = () => {
-    const lines = tracked.map((m) => {
-      const ch = change(m.key, series(snap.measurements, c.id, m.key));
-      return ch ? `${m.label}: ${fmtValue(m.key, ch.first.value)} → ${fmtValue(m.key, ch.last.value)}` : null;
+    const lines = defs.map((d) => {
+      const ch = changeWith(d, pointsFor(d.key));
+      return ch ? `${d.label}: ${fmtWith(d, ch.first.value)} → ${fmtWith(d, ch.last.value)}` : null;
     }).filter(Boolean);
-    const since = history.length ? fmtLong(history[history.length - 1].takenOn) : '';
-    return `${c.firstName}, look at your progress since ${since}!\n${lines.join('\n')}\nYou look like your habits. Keep going! - ${snap.settings.trainerName}`;
+    return `${c.firstName}, look at your progress!\n${lines.join('\n')}\nKeep going! - ${snap.settings.trainerName}`;
   };
 
-  if (!tracked.length) {
-    return (
-      <div className="stack">
-        <Empty>No measurements yet. Record a starting point: weight, body fat, tape measurements or fitness tests.</Empty>
-        <Link to={`/clients/${c.id}/measure`} className="btn btn-block">Add first measurements</Link>
-      </div>
-    );
-  }
-
-  const pts = series(snap.measurements, c.id, key!);
-  const ch = change(key!, pts);
+  const pts = key ? series(snap.measurements, c.id, key) : [];
+  const ch = key ? change(key, pts) : null;
   const goal = goals.find((g) => g.metric === key);
 
   return (
     <div className="stack">
-      <div className="chips">
-        {tracked.map((m) => (
-          <button key={m.key} className={`chip${m.key === key ? ' on' : ''}`} aria-pressed={m.key === key} onClick={() => setSel(m.key)}>{m.label}</button>
-        ))}
-      </div>
-      <div className="card pad">
-        <div className="chart-head">
-          <div>
-            <span className="small">{metric(key!).label}, latest</span>
-            <div className="big-num">{fmtValue(key!, pts[pts.length - 1].value)}</div>
+      <div className="section-head"><h2>Body</h2><Link className="link-btn" to={`/clients/${c.id}/measure`}>+ Add measurements</Link></div>
+      {!key ? (
+        <Empty>No body measurements yet. Record a starting point: weight, body fat, tape measurements, blood pressure.</Empty>
+      ) : (
+        <>
+          <div className="chips">
+            {body.map((m) => (
+              <button key={m.key} className={`chip${m.key === key ? ' on' : ''}`} aria-pressed={m.key === key} onClick={() => setSel(m.key)}>{m.label}</button>
+            ))}
           </div>
-          {ch && <span className={`pill ${ch.good ? 'pill-paid' : 'pill-late'}`}>{ch.text}</span>}
-        </div>
-        <LineChart metric={key!} points={pts} target={goal?.target} />
-        {ch && <p className="small">On {fmtLong(ch.first.date)} {c.firstName} was at {fmtValue(key!, ch.first.value)}. On {fmtLong(ch.last.date)}: {fmtValue(key!, ch.last.value)}.</p>}
-      </div>
+          <div className="card pad">
+            <div className="chart-head">
+              <div>
+                <span className="small">{metric(key).label}, latest</span>
+                <div className="big-num">{fmtValue(key, pts[pts.length - 1].value)}</div>
+              </div>
+              {ch && <span className={`pill ${ch.good ? 'pill-paid' : 'pill-late'}`}>{ch.text}</span>}
+            </div>
+            <LineChart def={metric(key)} points={pts} target={goal?.target} />
+            {ch && <p className="small">On {fmtLong(ch.first.date)} {c.firstName} was at {fmtValue(key, ch.first.value)}. On {fmtLong(ch.last.date)}: {fmtValue(key, ch.last.value)}.</p>}
+          </div>
+        </>
+      )}
 
       {nextScan && (
         <div className={`card row${nextScan < today ? ' warn' : ''}`}>
@@ -162,20 +164,43 @@ function ProgressTab({ c }: { c: Client }) {
         </div>
       )}
 
-      <div className="section-head"><h2>Goals</h2><button className="link-btn" onClick={() => setAddingGoal(true)}>+ Add goal</button></div>
-      {addingGoal && <GoalForm c={c} options={tracked.map((m) => m.key)} onDone={() => setAddingGoal(false)} onSave={(g) => { save('goals', g); toast('Goal set'); }} />}
-      {goals.length === 0 && !addingGoal && <Empty>Set a target, like "mile under 7:00" or "body fat 15%", and track it here.</Empty>}
+      <div className="section-head"><h2>Exercises</h2><Link className="link-btn" to={`/clients/${c.id}/exercise/new`}>+ Add exercise</Link></div>
+      {exercises.length === 0 ? (
+        <Empty>No exercises yet. Tap "+ Add exercise" to pick from the library (by body part, calisthenics, cardio) or create your own, then log {c.firstName}'s numbers.</Empty>
+      ) : (
+        <div className="card">
+          {exercises.map((e) => {
+            const logs = snap.exerciseLogs.filter((l) => l.clientId === c.id && l.exerciseId === e.id).sort((a, b) => (a.date < b.date ? 1 : -1));
+            const exCh = changeWith(exerciseDef(e), exerciseSeries(snap.exerciseLogs, c.id, e.id));
+            return (
+              <Link key={e.id} to={`/clients/${c.id}/exercise/${e.id}`} className="row row-link">
+                <span className="grow">
+                  <strong>{e.name}</strong>
+                  <span className="small">{e.group} · {fmtLog(e, logs[0])} on {fmtShort(logs[0].date)}</span>
+                </span>
+                {exCh && exCh.delta !== 0 && <span className={`pill ${exCh.good ? 'pill-paid' : 'pill-late'}`}>{exCh.text}</span>}
+                <Icon name="chevron" size={16} />
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="section-head"><h2>Goals</h2>{defs.length > 0 && <button className="link-btn" onClick={() => setAddingGoal(true)}>+ Add goal</button>}</div>
+      {addingGoal && <GoalForm c={c} options={defs} onDone={() => setAddingGoal(false)} onSave={(g) => { save('goals', g); toast('Goal set'); }} />}
+      {goals.length === 0 && !addingGoal && <Empty>{defs.length ? 'Set a target, like "mile under 7:00" or "body fat 15%", and track it here.' : 'Add a measurement or an exercise first, then set goals for it.'}</Empty>}
       {goals.map((g) => {
-        const gp = series(snap.measurements, c.id, g.metric);
+        const d = trackDef(g.metric, custom);
+        if (!d) return null;
+        const gp = pointsFor(g.metric);
         const pct = goalProgress(g, gp);
-        const done = pct === 1;
         return (
           <div className="card pad goal" key={g.id}>
             <div className="row-plain">
-              <span className="grow"><strong>{metric(g.metric).label} → {fmtValue(g.metric, g.target)}</strong>
-                <span className="small">{gp.length ? `Now ${fmtValue(g.metric, gp[gp.length - 1].value)}` : 'No data yet'}{g.byDate ? ` · by ${fmtLong(g.byDate)}` : ''}</span>
+              <span className="grow"><strong>{d.label} → {fmtWith(d, g.target)}</strong>
+                <span className="small">{gp.length ? `Now ${fmtWith(d, gp[gp.length - 1].value)}` : 'No data yet'}{g.byDate ? ` · by ${fmtLong(g.byDate)}` : ''}</span>
               </span>
-              {done && <span className="pill pill-paid">Reached</span>}
+              {pct === 1 && <span className="pill pill-paid">Reached</span>}
               <button className="icon-btn sm" aria-label="Delete goal" onClick={() => { if (confirm('Delete this goal?')) del('goals', g.id); }}><Icon name="trash" size={16} /></button>
             </div>
             {pct !== null && <div className="bar"><span style={{ width: `${Math.round(pct * 100)}%` }} /></div>}
@@ -183,50 +208,53 @@ function ProgressTab({ c }: { c: Client }) {
         );
       })}
 
-      <div className="grid2">
-        <Link to={`/clients/${c.id}/measure`} className="btn btn-outline">Add measurements</Link>
-        {c.phone ? <a className="btn btn-dark" href={smsHref(c.phone, shareText())}>Share progress</a> : <button className="btn btn-dark" onClick={() => toast('Add a phone number first')}>Share progress</button>}
-      </div>
+      {defs.length > 0 && (c.phone
+        ? <a className="btn btn-dark btn-block" href={smsHref(c.phone, shareText())}>Share progress with {c.firstName}</a>
+        : <button className="btn btn-dark btn-block" onClick={() => toast('Add a phone number first')}>Share progress</button>)}
 
-      <div className="section-head"><h2>History</h2></div>
-      <div className="card">
-        {history.map((m) => (
-          <Link key={m.id} to={`/clients/${c.id}/measure/${m.id}`} className="row row-link">
-            <span className="grow">
-              <strong>{fmtLong(m.takenOn)}</strong>
-              <span className="small">{Object.entries(m.values).map(([k, v]) => `${metric(k as MetricKey).label} ${fmtValue(k as MetricKey, v as number)}`).join(' · ')}</span>
-            </span>
-            {m.fileId && <Icon name="file" size={16} />}
-            <Icon name="chevron" size={16} />
-          </Link>
-        ))}
-      </div>
+      {history.length > 0 && (
+        <>
+          <div className="section-head"><h2>Body measurement history</h2></div>
+          <div className="card">
+            {history.map((m) => (
+              <Link key={m.id} to={`/clients/${c.id}/measure/${m.id}`} className="row row-link">
+                <span className="grow">
+                  <strong>{fmtLong(m.takenOn)}</strong>
+                  <span className="small">{Object.entries(m.values).filter(([k]) => isMetric(k)).map(([k, v]) => `${metric(k as MetricKey).label} ${fmtValue(k as MetricKey, v as number)}`).join(' · ')}</span>
+                </span>
+                {m.fileId && <Icon name="file" size={16} />}
+                <Icon name="chevron" size={16} />
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function GoalForm({ c, options, onSave, onDone }: { c: Client; options: MetricKey[]; onSave: (g: Goal) => void; onDone: () => void }) {
-  const [m, setM] = useState<MetricKey>(options[0]);
+function GoalForm({ c, options, onSave, onDone }: { c: Client; options: TrackDef[]; onSave: (g: Goal) => void; onDone: () => void }) {
+  const [k, setK] = useState(options[0].key);
   const [target, setTarget] = useState('');
   const [by, setBy] = useState('');
-  const def = metric(m);
+  const def = options.find((o) => o.key === k) ?? options[0];
   return (
     <div className="card pad form-inline">
-      <label>Measure
-        <select value={m} onChange={(e) => setM(e.target.value as MetricKey)}>
-          {METRICS.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+      <label>Goal for
+        <select value={k} onChange={(e) => setK(e.target.value)}>
+          {options.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
         </select>
       </label>
       <div className="grid2">
-        <label>Target {def.time ? '(m:ss)' : def.unit ? `(${def.unit})` : ''}<input inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} /></label>
+        <label>Target {def.time ? '(m:ss)' : def.unit ? `(${def.unit})` : ''}<input inputMode={def.time ? 'text' : 'decimal'} value={target} onChange={(e) => setTarget(e.target.value)} /></label>
         <label>By (optional)<input type="date" value={by} onChange={(e) => setBy(e.target.value)} /></label>
       </div>
       <div className="grid2">
         <button className="btn btn-outline" onClick={onDone}>Cancel</button>
         <button className="btn" onClick={() => {
-          const v = parseValue(m, target);
+          const v = parseWith(def, target);
           if (v === null) return;
-          onSave({ id: uid(), clientId: c.id, metric: m, target: v, byDate: by || null, createdAt: nowIso() });
+          onSave({ id: uid(), clientId: c.id, metric: def.key, target: v, byDate: by || null, createdAt: nowIso() });
           onDone();
         }}>Save goal</button>
       </div>

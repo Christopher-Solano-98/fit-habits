@@ -1,7 +1,8 @@
-import type { Client, Goal, Measurement, MetricKey, Payment, Snapshot } from '@shared/types.ts';
+import type { Client, Goal, Measurement, Payment, Snapshot } from '@shared/types.ts';
 import { addDays, addMonths, startOfWeek, todayIso } from '@shared/dates.ts';
 import { defaultMotivations, defaultSettings, defaultTemplates } from './defaults';
 import { nowIso, uid } from './repo';
+import { migrateSnapshot } from './migrate';
 
 // Demo data built relative to today so the dashboard always looks "live".
 export function sampleSnapshot(): Snapshot {
@@ -43,8 +44,10 @@ export function sampleSnapshot(): Snapshot {
   for (let m = 1; m <= 4; m++) pay(aisha, addMonths(today.slice(0, 8) + '01', -m));
 
   const measurements: Measurement[] = [];
-  const measure = (c: Client, monthsAgo: number, values: Partial<Record<MetricKey, number>>) =>
-    measurements.push({ id: uid(), clientId: c.id, takenOn: addMonths(today, -monthsAgo), values, note: null, fileId: null, createdAt: created });
+  // Exercise numbers (push-ups, mile, lifts…) are written the legacy way and
+  // turned into exercise logs by migrateSnapshot below.
+  const measure = (c: Client, monthsAgo: number, values: Record<string, number>) =>
+    measurements.push({ id: uid(), clientId: c.id, takenOn: addMonths(today, -monthsAgo), values: values as Measurement['values'], note: null, fileId: null, createdAt: created });
 
   measure(marcus, 12, { weight: 212, bodyFat: 18, waist: 38, restingHr: 72, pushups: 28, mile: 590, squat: 225 });
   measure(marcus, 8, { weight: 204, bodyFat: 15, waist: 36.5, restingHr: 68, pushups: 34, mile: 545, squat: 255 });
@@ -63,25 +66,29 @@ export function sampleSnapshot(): Snapshot {
   measure(aisha, 3, { weight: 149, bodyFat: 24, plank: 110 });
 
   const goals: Goal[] = [
-    { id: uid(), clientId: marcus.id, metric: 'mile', target: 420, byDate: addMonths(today, 4), createdAt: created },
+    { id: uid(), clientId: marcus.id, metric: 'ex:b-mile', target: 420, byDate: addMonths(today, 4), createdAt: created },
     { id: uid(), clientId: tasha.id, metric: 'weight', target: 150, byDate: addMonths(today, 3), createdAt: created },
-    { id: uid(), clientId: devon.id, metric: 'deadlift', target: 365, byDate: null, createdAt: created },
+    { id: uid(), clientId: devon.id, metric: 'ex:b-deadlift', target: 365, byDate: null, createdAt: created },
     { id: uid(), clientId: linda.id, metric: 'systolic', target: 125, byDate: null, createdAt: created },
   ];
 
-  return {
+  const snap: Snapshot = {
     settings: defaultSettings(),
     clients, payments, measurements, goals,
     files: [],
     templates: defaultTemplates(),
     motivations: defaultMotivations(),
     intakes: [],
+    exercises: [],
+    exerciseLogs: [],
   };
+  migrateSnapshot(snap);
+  return snap;
 }
 
 export function emptySnapshot(): Snapshot {
   return {
     settings: defaultSettings(), clients: [], payments: [], measurements: [], goals: [], files: [],
-    templates: defaultTemplates(), motivations: defaultMotivations(), intakes: [],
+    templates: defaultTemplates(), motivations: defaultMotivations(), intakes: [], exercises: [], exerciseLogs: [],
   };
 }

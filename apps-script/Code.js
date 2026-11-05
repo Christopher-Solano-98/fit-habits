@@ -25,10 +25,12 @@ var TABLES = {
   templates: { id: 's', title: 's', body: 's', sort: 'n' },
   motivations: { id: 's', body: 's', sentOn: 's', createdAt: 's' },
   intakes: { id: 's', clientId: 's', token: 's', createdAt: 's', completedAt: 's', answers: 'j' },
+  exercises: { id: 's', name: 's', group: 's', kind: 's', createdAt: 's' },
+  exerciseLogs: { id: 's', clientId: 's', exerciseId: 's', date: 's', value: 'n', reps: 'n', note: 's', createdAt: 's' },
   notices: { id: 's', clientId: 's', kind: 's', channel: 's', to: 's', body: 's', status: 's', error: 's', localDate: 's', createdAt: 's' }
 };
-var APP_TABLES = ['clients', 'payments', 'measurements', 'goals', 'files', 'templates', 'motivations', 'intakes'];
-var CHILD_TABLES = ['payments', 'measurements', 'goals', 'files', 'intakes'];
+var APP_TABLES = ['clients', 'payments', 'measurements', 'goals', 'files', 'templates', 'motivations', 'intakes', 'exercises', 'exerciseLogs'];
+var CHILD_TABLES = ['payments', 'measurements', 'goals', 'files', 'intakes', 'exerciseLogs'];
 var INTAKE_MAX_DAYS = 21;
 
 // ---------- setup ----------

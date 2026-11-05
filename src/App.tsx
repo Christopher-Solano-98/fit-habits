@@ -13,6 +13,7 @@ import { Clients } from './screens/Clients';
 import { ClientDetail } from './screens/ClientDetail';
 import { ClientForm } from './screens/ClientForm';
 import { Measure } from './screens/Measure';
+import { ExerciseDetail, ExercisePicker } from './screens/Exercises';
 import { LogPayment } from './screens/LogPayment';
 import { Messages } from './screens/Messages';
 import { Reports } from './screens/Reports';
@@ -53,6 +54,8 @@ function TrainerApp() {
           <Route path="/clients/:id/edit" element={<ClientForm />} />
           <Route path="/clients/:id/measure" element={<Measure />} />
           <Route path="/clients/:id/measure/:mid" element={<Measure />} />
+          <Route path="/clients/:id/exercise/new" element={<ExercisePicker />} />
+          <Route path="/clients/:id/exercise/:exId" element={<ExerciseDetail />} />
           <Route path="/log" element={<LogPayment />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/reports" element={<Reports />} />

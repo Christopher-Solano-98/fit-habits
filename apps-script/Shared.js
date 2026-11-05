@@ -22,6 +22,9 @@ var FH = (() => {
   // scripts/gas-shared-entry.ts
   var gas_shared_entry_exports = {};
   __export(gas_shared_entry_exports, {
+    BUILT_IN_EXERCISES: () => BUILT_IN_EXERCISES,
+    EXERCISE_GROUPS: () => EXERCISE_GROUPS,
+    KINDS: () => KINDS,
     METRICS: () => METRICS,
     METRIC_GROUPS: () => METRIC_GROUPS,
     PARQ_QUESTIONS: () => PARQ_QUESTIONS,
@@ -30,26 +33,36 @@ var FH = (() => {
     addDays: () => addDays,
     addMonths: () => addMonths,
     ageOn: () => ageOn,
+    allExercises: () => allExercises,
     change: () => change,
+    changeWith: () => changeWith,
     currentPeriod: () => currentPeriod,
     diffDays: () => diffDays,
     digits: () => digits,
     endOfMonth: () => endOfMonth,
+    exKey: () => exKey,
+    exerciseDef: () => exerciseDef,
+    exerciseSeries: () => exerciseSeries,
     fillTemplate: () => fillTemplate,
+    findExercise: () => findExercise,
     fmtDay: () => fmtDay,
+    fmtLog: () => fmtLog,
     fmtLong: () => fmtLong,
     fmtMonthYear: () => fmtMonthYear,
     fmtShort: () => fmtShort,
     fmtTime: () => fmtTime,
     fmtValue: () => fmtValue,
+    fmtWith: () => fmtWith,
     goalProgress: () => goalProgress,
     inRange: () => inRange,
+    isMetric: () => isMetric,
     mailtoHref: () => mailtoHref,
     metric: () => metric,
     motivationReach: () => motivationReach,
     motivationRecipients: () => motivationRecipients,
     needsAttention: () => needsAttention,
     parseValue: () => parseValue,
+    parseWith: () => parseWith,
     payStatus: () => payStatus,
     receiptText: () => receiptText,
     reportRanges: () => reportRanges,
@@ -63,6 +76,9 @@ var FH = (() => {
     toDate: () => toDate,
     toIso: () => toIso,
     todayIso: () => todayIso,
+    trackDef: () => trackDef,
+    trackSeries: () => trackSeries,
+    trackedExercises: () => trackedExercises,
     weekday: () => weekday
   });
 
@@ -95,8 +111,8 @@ var FH = (() => {
     d.setDate(Math.min(day, last));
     return toIso(d);
   }
-  function diffDays(a, b) {
-    return Math.round((toDate(a).getTime() - toDate(b).getTime()) / 864e5);
+  function diffDays(a, b2) {
+    return Math.round((toDate(a).getTime() - toDate(b2).getTime()) / 864e5);
   }
   function weekday(iso) {
     return toDate(iso).getDay();
@@ -127,9 +143,9 @@ var FH = (() => {
     return `${MONTHS[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
   }
   function ageOn(birthDate, on) {
-    const b = toDate(birthDate), t = toDate(on);
-    let age = t.getFullYear() - b.getFullYear();
-    if (t.getMonth() < b.getMonth() || t.getMonth() === b.getMonth() && t.getDate() < b.getDate()) age--;
+    const b2 = toDate(birthDate), t = toDate(on);
+    let age = t.getFullYear() - b2.getFullYear();
+    if (t.getMonth() < b2.getMonth() || t.getMonth() === b2.getMonth() && t.getDate() < b2.getDate()) age--;
     return age;
   }
   function inRange(iso, from, to) {
@@ -189,7 +205,7 @@ var FH = (() => {
   }
   function payStatus(c, payments, today) {
     var _a;
-    const mine = payments.filter((p) => p.clientId === c.id).sort((a, b) => a.paidOn < b.paidOn ? 1 : -1);
+    const mine = payments.filter((p) => p.clientId === c.id).sort((a, b2) => a.paidOn < b2.paidOn ? 1 : -1);
     const lastPayment = (_a = mine[0]) != null ? _a : null;
     const period = currentPeriod(c, today);
     const paidAmount = mine.filter((p) => inRange(p.paidOn, period.start, period.end)).reduce((t, p) => t + p.amount, 0);
@@ -236,51 +252,55 @@ var FH = (() => {
     { key: "thigh", label: "Thigh", unit: "in", group: "Measurements", better: "down", step: 0.25 },
     { key: "restingHr", label: "Resting heart rate", unit: "bpm", group: "Health", better: "down", step: 1 },
     { key: "systolic", label: "Blood pressure (top)", unit: "mmHg", group: "Health", better: "down", step: 1 },
-    { key: "diastolic", label: "Blood pressure (bottom)", unit: "mmHg", group: "Health", better: "down", step: 1 },
-    { key: "pushups", label: "Push-ups (1 min)", unit: "reps", group: "Performance", better: "up", step: 1 },
-    { key: "plank", label: "Plank hold", unit: "", group: "Performance", better: "up", step: 1, time: true },
-    { key: "mile", label: "Mile time", unit: "", group: "Performance", better: "down", step: 1, time: true },
-    { key: "squat", label: "Squat (best)", unit: "lb", group: "Performance", better: "up", step: 5 },
-    { key: "bench", label: "Bench press (best)", unit: "lb", group: "Performance", better: "up", step: 5 },
-    { key: "deadlift", label: "Deadlift (best)", unit: "lb", group: "Performance", better: "up", step: 5 }
+    { key: "diastolic", label: "Blood pressure (bottom)", unit: "mmHg", group: "Health", better: "down", step: 1 }
   ];
-  var METRIC_GROUPS = ["Body", "Measurements", "Health", "Performance"];
+  var METRIC_GROUPS = ["Body", "Measurements", "Health"];
   function metric(key) {
     return METRICS.find((m) => m.key === key);
+  }
+  function isMetric(key) {
+    return METRICS.some((m) => m.key === key);
   }
   function round(n) {
     return String(Math.round(n * 10) / 10);
   }
-  function fmtValue(key, v) {
-    const m = metric(key);
-    if (m.time) {
+  function fmtWith(d, v) {
+    if (d.time) {
       const s = Math.round(v);
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     }
-    return m.unit === "%" ? `${round(v)}%` : m.unit ? `${round(v)} ${m.unit}` : round(v);
+    return d.unit === "%" ? `${round(v)}%` : d.unit ? `${round(v)} ${d.unit}` : round(v);
   }
-  function parseValue(key, raw) {
+  function fmtValue(key, v) {
+    return fmtWith(metric(key), v);
+  }
+  function parseWith(d, raw) {
     const s = raw.trim();
     if (!s) return null;
-    if (metric(key).time && s.includes(":")) {
+    if (d.time && s.includes(":")) {
       const [m, sec] = s.split(":").map(Number);
       return Number.isFinite(m) && Number.isFinite(sec) ? m * 60 + sec : null;
     }
     const n = Number(s);
     return Number.isFinite(n) ? n : null;
   }
-  function series(measurements, clientId, key) {
-    return measurements.filter((m) => m.clientId === clientId && typeof m.values[key] === "number").map((m) => ({ date: m.takenOn, value: m.values[key] })).sort((a, b) => a.date < b.date ? -1 : 1);
+  function parseValue(key, raw) {
+    return parseWith(metric(key), raw);
   }
-  function change(key, pts) {
+  function series(measurements, clientId, key) {
+    return measurements.filter((m) => m.clientId === clientId && typeof m.values[key] === "number").map((m) => ({ date: m.takenOn, value: m.values[key] })).sort((a, b2) => a.date < b2.date ? -1 : 1);
+  }
+  function changeWith(d, pts) {
     if (pts.length < 2) return null;
     const first = pts[0], last = pts[pts.length - 1];
     const delta = last.value - first.value;
-    const m = metric(key);
-    const good = delta === 0 ? true : delta < 0 === (m.better === "down");
-    const size = m.time ? fmtValue(key, Math.abs(delta)) : m.unit === "%" ? `${round(Math.abs(delta))} pts` : `${round(Math.abs(delta))}${m.unit ? " " + m.unit : ""}`;
-    const text = delta === 0 ? "No change" : `${delta < 0 ? "Down" : "Up"} ${size}`;
+    const good = delta === 0 ? true : delta < 0 === (d.better === "down");
+    const size = d.time ? fmtWith(d, Math.abs(delta)) : d.unit === "%" ? `${round(Math.abs(delta))} pts` : `${round(Math.abs(delta))}${d.unit ? " " + d.unit : ""}`;
+    const text = delta === 0 ? "No change" : d.time ? `${delta < 0 ? "Down" : "Up"} ${size}` : `${delta < 0 ? "Down" : "Up"} ${size}`;
     return { first, last, delta, good, text };
+  }
+  function change(key, pts) {
+    return changeWith(metric(key), pts);
   }
   function goalProgress(g, pts) {
     if (!pts.length) return null;
@@ -289,10 +309,109 @@ var FH = (() => {
     return Math.min(Math.max((now - start) / (g.target - start), 0), 1);
   }
 
+  // supabase/functions/_shared/exercises.ts
+  var EXERCISE_GROUPS = ["Chest", "Back", "Shoulders", "Arms", "Legs", "Glutes", "Core", "Calisthenics", "Cardio"];
+  var KINDS = {
+    weight: { label: "Weight & reps", hint: "Best weight lifted", unit: "lb", better: "up" },
+    reps: { label: "Reps", hint: "Most reps", unit: "reps", better: "up" },
+    hold: { label: "Hold time", hint: "Longest hold (m:ss)", unit: "", better: "up", time: true },
+    time: { label: "Time (faster is better)", hint: "Fastest time (m:ss)", unit: "", better: "down", time: true }
+  };
+  var b = (id, name, group, kind) => ({ id: `b-${id}`, name, group, kind, createdAt: "" });
+  var BUILT_IN_EXERCISES = [
+    b("bench", "Bench press", "Chest", "weight"),
+    b("incline-bench", "Incline bench press", "Chest", "weight"),
+    b("db-bench", "Dumbbell bench press", "Chest", "weight"),
+    b("chest-fly", "Chest fly", "Chest", "weight"),
+    b("deadlift", "Deadlift", "Back", "weight"),
+    b("barbell-row", "Barbell row", "Back", "weight"),
+    b("db-row", "Dumbbell row", "Back", "weight"),
+    b("lat-pulldown", "Lat pulldown", "Back", "weight"),
+    b("cable-row", "Seated cable row", "Back", "weight"),
+    b("ohp", "Overhead press", "Shoulders", "weight"),
+    b("db-shoulder-press", "Dumbbell shoulder press", "Shoulders", "weight"),
+    b("lateral-raise", "Lateral raise", "Shoulders", "weight"),
+    b("face-pull", "Face pull", "Shoulders", "weight"),
+    b("barbell-curl", "Barbell curl", "Arms", "weight"),
+    b("db-curl", "Dumbbell curl", "Arms", "weight"),
+    b("hammer-curl", "Hammer curl", "Arms", "weight"),
+    b("tricep-pushdown", "Tricep pushdown", "Arms", "weight"),
+    b("skull-crusher", "Skull crusher", "Arms", "weight"),
+    b("back-squat", "Back squat", "Legs", "weight"),
+    b("front-squat", "Front squat", "Legs", "weight"),
+    b("leg-press", "Leg press", "Legs", "weight"),
+    b("lunge", "Walking lunge", "Legs", "weight"),
+    b("leg-extension", "Leg extension", "Legs", "weight"),
+    b("hamstring-curl", "Hamstring curl", "Legs", "weight"),
+    b("calf-raise", "Calf raise", "Legs", "weight"),
+    b("hip-thrust", "Hip thrust", "Glutes", "weight"),
+    b("rdl", "Romanian deadlift", "Glutes", "weight"),
+    b("glute-bridge", "Glute bridge", "Glutes", "reps"),
+    b("step-up", "Step-up", "Glutes", "weight"),
+    b("plank", "Plank", "Core", "hold"),
+    b("side-plank", "Side plank", "Core", "hold"),
+    b("hanging-knee-raise", "Hanging knee raise", "Core", "reps"),
+    b("sit-ups", "Sit-ups (1 min)", "Core", "reps"),
+    b("russian-twist", "Russian twist", "Core", "reps"),
+    b("pushups", "Push-ups", "Calisthenics", "reps"),
+    b("pullups", "Pull-ups", "Calisthenics", "reps"),
+    b("chinups", "Chin-ups", "Calisthenics", "reps"),
+    b("dips", "Dips", "Calisthenics", "reps"),
+    b("bw-squats", "Bodyweight squats", "Calisthenics", "reps"),
+    b("burpees", "Burpees", "Calisthenics", "reps"),
+    b("muscle-ups", "Muscle-ups", "Calisthenics", "reps"),
+    b("pistol-squat", "Pistol squats", "Calisthenics", "reps"),
+    b("wall-sit", "Wall sit", "Calisthenics", "hold"),
+    b("dead-hang", "Dead hang", "Calisthenics", "hold"),
+    b("l-sit", "L-sit", "Calisthenics", "hold"),
+    b("handstand", "Handstand hold", "Calisthenics", "hold"),
+    b("mile", "Mile run", "Cardio", "time"),
+    b("400m", "400 m run", "Cardio", "time"),
+    b("5k", "5K run", "Cardio", "time"),
+    b("row-500", "500 m row", "Cardio", "time"),
+    b("jump-rope", "Jump rope (1 min)", "Cardio", "reps")
+  ];
+  function allExercises(custom) {
+    return [...BUILT_IN_EXERCISES, ...custom];
+  }
+  function findExercise(id, custom) {
+    var _a;
+    return (_a = BUILT_IN_EXERCISES.find((e) => e.id === id)) != null ? _a : custom.find((e) => e.id === id);
+  }
+  var exKey = (id) => `ex:${id}`;
+  function exerciseDef(e) {
+    const k = KINDS[e.kind];
+    return { key: exKey(e.id), label: e.name, unit: k.unit, better: k.better, time: k.time };
+  }
+  function trackDef(key, custom) {
+    if (key.startsWith("ex:")) {
+      const e = findExercise(key.slice(3), custom);
+      return e ? exerciseDef(e) : null;
+    }
+    return isMetric(key) ? metric(key) : null;
+  }
+  function exerciseSeries(logs, clientId, exerciseId) {
+    return logs.filter((l) => l.clientId === clientId && l.exerciseId === exerciseId).map((l) => ({ date: l.date, value: l.value })).sort((a, b2) => a.date < b2.date ? -1 : 1);
+  }
+  function trackSeries(key, clientId, measurements, logs) {
+    if (key.startsWith("ex:")) return exerciseSeries(logs, clientId, key.slice(3));
+    return isMetric(key) ? series(measurements, clientId, key) : [];
+  }
+  function fmtLog(e, l) {
+    const base = fmtWith(exerciseDef(e), l.value);
+    return e.kind === "weight" && l.reps ? `${base} \xD7 ${l.reps}` : base;
+  }
+  function trackedExercises(logs, clientId, custom) {
+    var _a;
+    const last = /* @__PURE__ */ new Map();
+    for (const l of logs) if (l.clientId === clientId && ((_a = last.get(l.exerciseId)) != null ? _a : "") < l.date) last.set(l.exerciseId, l.date);
+    return [...last.entries()].sort((a, b2) => a[1] < b2[1] ? 1 : -1).map(([id]) => findExercise(id, custom)).filter((e) => !!e);
+  }
+
   // supabase/functions/_shared/messages.ts
   function scheduleText(c) {
     if (!c.sessionDays.length) return "No set schedule";
-    const days = [...c.sessionDays].sort((a, b) => (a + 6) % 7 - (b + 6) % 7).map((d) => WEEKDAYS_SHORT[d]);
+    const days = [...c.sessionDays].sort((a, b2) => (a + 6) % 7 - (b2 + 6) % 7).map((d) => WEEKDAYS_SHORT[d]);
     const list = days.length > 1 ? days.slice(0, -1).join(", ") + " & " + days[days.length - 1] : days[0];
     return c.sessionTime ? `${list} \xB7 ${c.sessionTime}` : list;
   }

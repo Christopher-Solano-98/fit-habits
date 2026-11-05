@@ -44,8 +44,30 @@ export interface Payment {
 export type MetricKey =
   | 'weight' | 'bodyFat' | 'leanMass' | 'bmi'
   | 'waist' | 'hips' | 'chest' | 'arm' | 'thigh'
-  | 'restingHr' | 'systolic' | 'diastolic'
-  | 'pushups' | 'plank' | 'mile' | 'squat' | 'bench' | 'deadlift';
+  | 'restingHr' | 'systolic' | 'diastolic';
+
+/** weight = best lb (with reps), reps = most reps, hold = longest seconds, time = fastest seconds. */
+export type ExerciseKind = 'weight' | 'reps' | 'hold' | 'time';
+
+/** A trainer-added exercise. Built-in ones live in code (exercises.ts) and use "b-" ids. */
+export interface Exercise {
+  id: string;
+  name: string;
+  group: string; // body part: Chest, Back, … Calisthenics, Cardio
+  kind: ExerciseKind;
+  createdAt: string;
+}
+
+export interface ExerciseLog {
+  id: string;
+  clientId: string;
+  exerciseId: string;
+  date: string; // YYYY-MM-DD
+  value: number; // lb, reps or seconds depending on the exercise kind
+  reps: number | null; // for weight exercises
+  note: string | null;
+  createdAt: string;
+}
 
 export interface Measurement {
   id: string;
@@ -60,7 +82,7 @@ export interface Measurement {
 export interface Goal {
   id: string;
   clientId: string;
-  metric: MetricKey;
+  metric: string; // a body MetricKey, or "ex:<exercise id>"
   target: number;
   byDate: string | null;
   createdAt: string;
@@ -134,6 +156,8 @@ export interface Snapshot {
   templates: Template[];
   motivations: Motivation[];
   intakes: IntakeRequest[];
+  exercises: Exercise[];
+  exerciseLogs: ExerciseLog[];
 }
 
 export type TableName = Exclude<keyof Snapshot, 'settings'>;

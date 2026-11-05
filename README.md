@@ -12,7 +12,9 @@ It's a web app that installs to the phone's Home Screen (a PWA), so there's no A
 - **One-tap call and text:** with saved quick replies that fill in each client's name, rate and schedule
 - **Intake packet:** a secure link the client fills out on their phone. It covers the PAR-Q+ questions, medical history, emergency contact, a photo of their ID and a typed-signature waiver.
 - **Files:** ID, PAR-Q, medical, waiver, scan reports and progress photos, in a private encrypted bucket
-- **Progress (measurables):** weight, body fat, lean mass, BMI, tape measurements, resting heart rate, blood pressure, push-ups, plank, mile time and lifts
+- **Progress (measurables):**
+  - **Body:** weight, body fat, lean mass, BMI, tape measurements, resting heart rate, blood pressure
+  - **Exercises:** nothing preset. Pick from a library by body part (chest, back, shoulders, arms, legs, glutes, core, calisthenics, cardio incl. mile time) or create your own, then log weight × reps, reps, hold time or run time. Personal bests are called out.
   - charts over time, with the goal line drawn on the chart
   - goals with progress bars
   - body-scan reminders every N months

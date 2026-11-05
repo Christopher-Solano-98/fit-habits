@@ -3,5 +3,6 @@
 export * from '../supabase/functions/_shared/billing.ts';
 export * from '../supabase/functions/_shared/dates.ts';
 export * from '../supabase/functions/_shared/metrics.ts';
+export * from '../supabase/functions/_shared/exercises.ts';
 export * from '../supabase/functions/_shared/messages.ts';
 export { PARQ_QUESTIONS } from '../supabase/functions/_shared/parq.ts';

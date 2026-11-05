@@ -8,10 +8,11 @@ import { nowIso, uid, type Repo, type Row } from './repo';
 // App objects are camelCase; columns are snake_case. Only top-level keys are
 // converted, so jsonb columns (values, answers, motivation…) keep their shape.
 
-const TABLES: TableName[] = ['clients', 'payments', 'measurements', 'goals', 'files', 'templates', 'motivations', 'intakes'];
+const TABLES: TableName[] = ['clients', 'payments', 'measurements', 'goals', 'files', 'templates', 'motivations', 'intakes', 'exercises', 'exerciseLogs'];
 const BUCKET = 'client-files';
 
 const toSnake = (k: string) => k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
+const tableName = (t: TableName) => toSnake(t);
 const toCamel = (k: string) => k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 
 function outRow(row: object): Record<string, unknown> {
@@ -34,7 +35,7 @@ export function cloudRepo(sb: SupabaseClient): Repo {
     async load() {
       const [settingsRes, ...rest] = await Promise.all([
         sb.from('settings').select('*').maybeSingle(),
-        ...TABLES.map((t) => sb.from(t).select('*')),
+        ...TABLES.map((t) => sb.from(tableName(t)).select('*')),
       ]);
       const settingsRow = check(settingsRes);
       const snap = { settings: settingsRow ? { ...defaultSettings(), ...inRow<Settings>(settingsRow) } : defaultSettings() } as Snapshot;
@@ -45,10 +46,10 @@ export function cloudRepo(sb: SupabaseClient): Repo {
       return snap;
     },
     async put<T extends TableName>(table: T, row: Row<T>) {
-      check(await sb.from(table).upsert(outRow(row)));
+      check(await sb.from(tableName(table)).upsert(outRow(row)));
     },
     async remove(table, id) {
-      check(await sb.from(table).delete().eq('id', id));
+      check(await sb.from(tableName(table)).delete().eq('id', id));
     },
     async saveSettings(s: Settings) {
       const { id: _id, ...rest } = s;

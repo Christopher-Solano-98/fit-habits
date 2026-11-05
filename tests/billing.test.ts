@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { Client, Payment } from '../supabase/functions/_shared/types.ts';
+import type { Client, Exercise, ExerciseLog, Payment } from '../supabase/functions/_shared/types.ts';
 import { currentPeriod, payStatus } from '../supabase/functions/_shared/billing.ts';
 import { addMonths, startOfWeek } from '../supabase/functions/_shared/dates.ts';
-import { change, goalProgress, parseValue } from '../supabase/functions/_shared/metrics.ts';
+import { change, changeWith, goalProgress, parseValue, parseWith } from '../supabase/functions/_shared/metrics.ts';
+import { BUILT_IN_EXERCISES, EXERCISE_GROUPS, exerciseDef, exerciseSeries, findExercise, fmtLog, trackDef, trackedExercises } from '../supabase/functions/_shared/exercises.ts';
 
 const client = (p: Partial<Client> = {}): Client => ({
   id: 'c', firstName: 'Marcus', lastName: 'Reed', birthDate: null, gender: null, phone: null, email: null, address: null,
@@ -73,15 +74,47 @@ describe('metrics', () => {
   it('describes body fat change in points and judges direction', () => {
     const ch = change('bodyFat', [{ date: '2025-10-01', value: 18 }, { date: '2026-10-01', value: 8 }]);
     expect(ch).toMatchObject({ text: 'Down 10 pts', good: true });
-    expect(change('squat', [{ date: 'a', value: 225 }, { date: 'b', value: 205 }])?.good).toBe(false);
+    expect(change('weight', [{ date: 'a', value: 180 }, { date: 'b', value: 186 }])).toMatchObject({ text: 'Up 6 lb', good: false });
   });
-  it('parses m:ss times', () => {
-    expect(parseValue('mile', '7:42')).toBe(462);
+  it('parses numbers', () => {
     expect(parseValue('weight', '191.5')).toBe(191.5);
     expect(parseValue('weight', '')).toBeNull();
   });
   it('goal progress runs from first value to target', () => {
-    const g = { id: 'g', clientId: 'c', metric: 'mile' as const, target: 420, byDate: null, createdAt: '' };
+    const g = { id: 'g', clientId: 'c', metric: 'ex:b-mile', target: 420, byDate: null, createdAt: '' };
     expect(goalProgress(g, [{ date: 'a', value: 600 }, { date: 'b', value: 510 }])).toBeCloseTo(0.5);
+  });
+});
+
+describe('exercises', () => {
+  const log = (exerciseId: string, date: string, value: number, reps: number | null = null): ExerciseLog =>
+    ({ id: date + value, clientId: 'c', exerciseId, date, value, reps, note: null, createdAt: '' });
+
+  it('judges direction by kind: heavier/more is better, faster is better for time', () => {
+    const squat = findExercise('b-back-squat', [])!;
+    const mile = findExercise('b-mile', [])!;
+    expect(changeWith(exerciseDef(squat), [{ date: 'a', value: 225 }, { date: 'b', value: 205 }])).toMatchObject({ text: 'Down 20 lb', good: false });
+    expect(changeWith(exerciseDef(mile), [{ date: 'a', value: 590 }, { date: 'b', value: 462 }])).toMatchObject({ text: 'Down 2:08', good: true });
+  });
+  it('formats and parses entries', () => {
+    expect(fmtLog(findExercise('b-bench', [])!, { value: 185, reps: 5 })).toBe('185 lb × 5');
+    expect(fmtLog(findExercise('b-pullups', [])!, { value: 12, reps: null })).toBe('12 reps');
+    expect(fmtLog(findExercise('b-plank', [])!, { value: 90, reps: null })).toBe('1:30');
+    expect(parseWith(exerciseDef(findExercise('b-mile', [])!), '7:42')).toBe(462);
+  });
+  it('custom exercises work like built-ins', () => {
+    const sled: Exercise = { id: 'x1', name: 'Sled push', group: 'Legs', kind: 'time', createdAt: '' };
+    expect(findExercise('x1', [sled])?.name).toBe('Sled push');
+    expect(trackDef('ex:x1', [sled])).toMatchObject({ label: 'Sled push', better: 'down', time: true });
+    expect(trackDef('bodyFat', [])?.label).toBe('Body fat');
+  });
+  it('lists a client’s exercises, most recently logged first', () => {
+    const logs = [log('b-bench', '2026-10-01', 185), log('b-pullups', '2026-11-01', 10), log('b-bench', '2026-09-01', 175)];
+    expect(trackedExercises(logs, 'c', []).map((e) => e.id)).toEqual(['b-pullups', 'b-bench']);
+    expect(exerciseSeries(logs, 'c', 'b-bench').map((p) => p.value)).toEqual([175, 185]);
+  });
+  it('every built-in exercise has a unique id and a known body part', () => {
+    expect(new Set(BUILT_IN_EXERCISES.map((e) => e.id)).size).toBe(BUILT_IN_EXERCISES.length);
+    for (const e of BUILT_IN_EXERCISES) expect(EXERCISE_GROUPS).toContain(e.group);
   });
 });
