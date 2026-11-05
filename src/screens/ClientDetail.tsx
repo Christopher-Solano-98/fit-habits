@@ -89,7 +89,7 @@ function PaymentsTab({ c }: { c: Client }) {
           {pays.map((p) => (
             <div className="row" key={p.id}>
               <span className="grow">
-                <strong>{money(p.amount)} · {p.method === 'cashapp' ? 'Cash App' : p.method[0].toUpperCase() + p.method.slice(1)}</strong>
+                <strong>{money(p.amount)} · Cash</strong>
                 <span className="small">{fmtLong(p.paidOn)}{p.note ? ` · ${p.note}` : ''}</span>
               </span>
               {p.receiptVia !== 'none' && <span className="ok small"><Icon name="check" size={14} stroke={2.6} /> Receipt</span>}

@@ -28,7 +28,7 @@ export function sampleSnapshot(): Snapshot {
 
   const payments: Payment[] = [];
   const pay = (c: Client, paidOn: string, amount = c.rate) =>
-    payments.push({ id: uid(), clientId: c.id, amount, paidOn, method: 'cash', note: null, receiptVia: c.channel, createdAt: created });
+    payments.push({ id: uid(), clientId: c.id, amount, paidOn, note: null, receiptVia: c.channel, createdAt: created });
 
   // Weekly payers: 10 weeks of history. Marcus and Linda haven't paid this week yet.
   for (let w = 1; w <= 10; w++) {

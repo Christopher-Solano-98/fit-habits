@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import type { Channel, Payment, PayMethod } from '@shared/types.ts';
+import type { Channel, Payment } from '@shared/types.ts';
 import type { Sent } from '../data/repo';
 import { fmtLong } from '@shared/dates.ts';
 import { mailtoHref, receiptText, smsHref } from '@shared/messages.ts';
 import { useStore } from '../data/store';
 import { nowIso, uid } from '../data/repo';
-import { Header, Seg } from '../components/ui';
+import { Header } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { byName, money } from '../lib/util';
 
@@ -18,7 +18,6 @@ export function LogPayment() {
   const c = client(cid);
   const [amount, setAmount] = useState(() => String(c ? status(c).owed || c.rate : ''));
   const [paidOn, setPaidOn] = useState(today);
-  const [method, setMethod] = useState<PayMethod>('cash');
   const [note, setNote] = useState('');
   const [done, setDone] = useState<{ p: Payment; sent: Sent } | null>(null);
 
@@ -32,7 +31,7 @@ export function LogPayment() {
     e.preventDefault();
     const n = Number(amount);
     if (!c || !(n > 0)) return toast('Pick a client and enter an amount');
-    const p: Payment = { id: uid(), clientId: c.id, amount: n, paidOn, method, note: note || null, receiptVia: c.channel, createdAt: nowIso() };
+    const p: Payment = { id: uid(), clientId: c.id, amount: n, paidOn, note: note || null, receiptVia: c.channel, createdAt: nowIso() };
     await save('payments', p);
     let sent: Sent = { text: false, email: false };
     if (c.channel !== 'none') {
@@ -57,7 +56,7 @@ export function LogPayment() {
       <div className="page done">
         <span className="done-check"><Icon name="check" size={38} stroke={2.6} /></span>
         <h1 className="display">Payment logged</h1>
-        <p>{money(done.p.amount)} from {c.firstName} {c.lastName} · {fmtLong(done.p.paidOn)}</p>
+        <p>{money(done.p.amount)} cash from {c.firstName} {c.lastName} · {fmtLong(done.p.paidOn)}</p>
         <div className="card pad receipt">
           <span className="small upper">{via === 'none' ? 'Receipt (not sent: client opted out)' : sentWords ? `Receipt sent automatically by ${sentWords}` : 'Send the receipt'}</span>
           <div className="bubble">{text}</div>
@@ -82,7 +81,7 @@ export function LogPayment() {
 
   return (
     <form className="page form" onSubmit={submit}>
-      <Header title="Log a payment" />
+      <Header title="Log a cash payment" />
       <label>Client</label>
       <div className="chips">
         {clients.map((x) => (
@@ -99,9 +98,6 @@ export function LogPayment() {
       <div className="chips">
         {quick.map((q) => <button type="button" key={q} className={`chip${Number(amount) === q ? ' on' : ''}`} onClick={() => setAmount(String(q))}>${q}</button>)}
       </div>
-
-      <label>Paid with</label>
-      <Seg<PayMethod> value={method} options={[['cash', 'Cash'], ['zelle', 'Zelle'], ['cashapp', 'Cash App'], ['venmo', 'Venmo'], ['other', 'Other']]} onChange={setMethod} />
 
       <div className="grid2">
         <label>Date<input type="date" value={paidOn} max={today} onChange={(e) => setPaidOn(e.target.value || today)} /></label>

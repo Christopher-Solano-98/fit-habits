@@ -41,7 +41,7 @@ describe('Apps Script backend', () => {
     g.call('saveSettings', { settings: { id: 'settings', businessName: 'Fit Habits', motivation: { enabled: true, weekday: 5 } } });
     g.call('put', { table: 'clients', row: client() });
     g.call('put', { table: 'clients', row: client({ phone: '5552014410', active: false }) });
-    g.call('put', { table: 'payments', row: { id: 'p1', clientId: 'c1', amount: 150, paidOn: '2026-11-02', method: 'cash', note: null, receiptVia: 'text', createdAt: 'x' } });
+    g.call('put', { table: 'payments', row: { id: 'p1', clientId: 'c1', amount: 150, paidOn: '2026-11-02', note: null, receiptVia: 'text', createdAt: 'x' } });
     g.call('put', { table: 'measurements', row: { id: 'm1', clientId: 'c1', takenOn: '2026-11-01', values: { weight: 191, mile: 462 }, note: null, fileId: null, createdAt: 'x' } });
     const r = g.call('load').result;
     expect(r.clients).toHaveLength(1);
@@ -60,8 +60,8 @@ describe('Apps Script backend', () => {
     const g = setup();
     g.call('put', { table: 'clients', row: client() });
     g.call('put', { table: 'clients', row: client({ id: 'c2', firstName: 'Tasha' }) });
-    g.call('put', { table: 'payments', row: { id: 'p1', clientId: 'c1', amount: 150, paidOn: '2026-11-02', method: 'cash', note: null, receiptVia: 'text', createdAt: 'x' } });
-    g.call('put', { table: 'payments', row: { id: 'p2', clientId: 'c2', amount: 150, paidOn: '2026-11-02', method: 'cash', note: null, receiptVia: 'text', createdAt: 'x' } });
+    g.call('put', { table: 'payments', row: { id: 'p1', clientId: 'c1', amount: 150, paidOn: '2026-11-02', note: null, receiptVia: 'text', createdAt: 'x' } });
+    g.call('put', { table: 'payments', row: { id: 'p2', clientId: 'c2', amount: 150, paidOn: '2026-11-02', note: null, receiptVia: 'text', createdAt: 'x' } });
     const up = g.call('upload', { clientId: 'c1', kind: 'id', name: 'id.jpg', mime: 'image/jpeg', data: Buffer.from('hello').toString('base64') }).result;
     expect(Buffer.from(g.call('file', { id: up.id }).result.data, 'base64').toString()).toBe('hello');
     expect(g.call('upload', { clientId: 'nope', kind: 'id', name: 'x', mime: 'image/jpeg', data: 'aGk=' }).error).toMatch(/Unknown client/);

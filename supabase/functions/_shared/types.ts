@@ -2,7 +2,6 @@
 // this folder dependency-free and use explicit .ts import paths.
 
 export type BillingCycle = 'weekly' | 'biweekly' | 'monthly' | 'per_session';
-export type PayMethod = 'cash' | 'zelle' | 'cashapp' | 'venmo' | 'other';
 export type Channel = 'text' | 'email' | 'both' | 'none';
 export type FileKind = 'id' | 'parq' | 'medical' | 'waiver' | 'scan' | 'photo' | 'other';
 
@@ -36,8 +35,7 @@ export interface Payment {
   id: string;
   clientId: string;
   amount: number;
-  paidOn: string; // YYYY-MM-DD
-  method: PayMethod;
+  paidOn: string; // YYYY-MM-DD (cash only: no payment method field)
   note: string | null;
   receiptVia: Channel;
   createdAt: string;

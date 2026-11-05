@@ -18,7 +18,7 @@ var PROPS = PropertiesService.getScriptProperties();
 // s = text, n = number, b = true/false, j = JSON (lists and objects)
 var TABLES = {
   clients: { id: 's', firstName: 's', lastName: 's', birthDate: 's', gender: 's', phone: 's', email: 's', address: 's', sessionDays: 'j', sessionTime: 's', rate: 'n', cycle: 's', dueWeekday: 'n', dueDayOfMonth: 'n', channel: 's', medicalCurrent: 's', medicalPast: 's', emergencyName: 's', emergencyPhone: 's', notes: 's', startDate: 's', active: 'b', createdAt: 's' },
-  payments: { id: 's', clientId: 's', amount: 'n', paidOn: 's', method: 's', note: 's', receiptVia: 's', createdAt: 's' },
+  payments: { id: 's', clientId: 's', amount: 'n', paidOn: 's', note: 's', receiptVia: 's', createdAt: 's' },
   measurements: { id: 's', clientId: 's', takenOn: 's', values: 'j', note: 's', fileId: 's', createdAt: 's' },
   goals: { id: 's', clientId: 's', metric: 's', target: 'n', byDate: 's', createdAt: 's' },
   files: { id: 's', clientId: 's', kind: 's', name: 's', path: 's', mime: 's', size: 'n', createdAt: 's' },

@@ -22,8 +22,7 @@ export function fillTemplate(body: string, c: Client, s: Pick<Settings, 'busines
 }
 
 export function receiptText(c: Client, p: Payment, s: Pick<Settings, 'businessName' | 'trainerName'>): string {
-  const method = p.method === 'cash' ? 'cash ' : '';
-  return `${s.businessName}: Got your $${p.amount} ${method}payment on ${fmtShort(p.paidOn)}. Thank you, ${c.firstName}! You look like your habits.`;
+  return `${s.businessName}: Got your $${p.amount} cash payment on ${fmtShort(p.paidOn)}. Thank you, ${c.firstName}! You look like your habits.`;
 }
 
 export function digits(phone: string): string {

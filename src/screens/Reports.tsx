@@ -21,7 +21,6 @@ export function Reports() {
     return { c, n: mine.length, total: mine.reduce((t, p) => t + p.amount, 0) };
   }).filter((x) => x.n > 0).sort((a, b) => b.total - a.total);
   const unpaid = clients.filter((c) => c.active && c.rate > 0 && !pays.some((p) => p.clientId === c.id));
-  const methods = Object.entries(pays.reduce<Record<string, number>>((acc, p) => ({ ...acc, [p.method]: (acc[p.method] ?? 0) + p.amount }), {}));
   const rangeText = `${fmtShort(r.from)} – ${fmtShort(r.to)}`;
 
   const summary = [
@@ -34,9 +33,9 @@ export function Reports() {
   ].join('\n');
 
   const exportCsv = () => {
-    const rows = [['Date', 'Client', 'Amount', 'Method', 'Note'], ...pays.sort((a, b) => (a.paidOn < b.paidOn ? -1 : 1)).map((p) => {
+    const rows = [['Date', 'Client', 'Cash amount', 'Note'], ...pays.sort((a, b) => (a.paidOn < b.paidOn ? -1 : 1)).map((p) => {
       const c = snap.clients.find((x) => x.id === p.clientId);
-      return [p.paidOn, c ? fullName(c) : 'Deleted client', p.amount, p.method, p.note ?? ''];
+      return [p.paidOn, c ? fullName(c) : 'Deleted client', p.amount, p.note ?? ''];
     })];
     download(`fit-habits-payments-${r.from}-to-${r.to}.csv`, csv(rows));
   };
@@ -46,10 +45,9 @@ export function Reports() {
       <Header title="Reports" sub={`${r.label} · ${rangeText}`} />
       <Seg value={key} options={ranges.map((x) => [x.key, x.label] as [ReportRange['key'], string])} onChange={setKey} />
       <div className="grid2">
-        <div className="stat stat-dark"><span className="stat-label">Collected</span><span className="stat-value">{money(total)}</span></div>
+        <div className="stat stat-dark"><span className="stat-label">Cash collected</span><span className="stat-value">{money(total)}</span></div>
         <div className="stat"><span className="stat-label">Payments logged</span><span className="stat-value">{pays.length}</span></div>
       </div>
-      {methods.length > 1 && <p className="small">{methods.map(([m, v]) => `${m === 'cashapp' ? 'Cash App' : m[0].toUpperCase() + m.slice(1)} ${money(v)}`).join(' · ')}</p>}
 
       <h2 className="h2 ok">Paid</h2>
       <div className="card">

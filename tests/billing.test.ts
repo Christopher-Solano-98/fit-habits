@@ -10,7 +10,7 @@ const client = (p: Partial<Client> = {}): Client => ({
   medicalCurrent: null, medicalPast: null, emergencyName: null, emergencyPhone: null, notes: null,
   startDate: '2026-01-01', active: true, createdAt: '', ...p,
 });
-const pay = (paidOn: string, amount = 150): Payment => ({ id: paidOn, clientId: 'c', amount, paidOn, method: 'cash', note: null, receiptVia: 'text', createdAt: '' });
+const pay = (paidOn: string, amount = 150): Payment => ({ id: paidOn, clientId: 'c', amount, paidOn, note: null, receiptVia: 'text', createdAt: '' });
 
 describe('dates', () => {
   it('weeks start on Monday', () => {

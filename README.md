@@ -7,7 +7,7 @@ It's a web app that installs to the phone's Home Screen (a PWA), so there's no A
 ## What it does
 
 - **Clients:** name, birthday/age, gender, contact, address, schedule, rate, health notes, emergency contact
-- **Payments:** log cash (or Zelle, Cash App, Venmo) in two taps. The client gets a receipt by text or email.
+- **Payments (cash only):** log a cash payment in two taps. The client gets a receipt by text or email.
 - **Missed-payment alerts:** shown on the home screen, plus a daily email to the trainer. Billing can be weekly, every 2 weeks, monthly or per session.
 - **One-tap call and text:** with saved quick replies that fill in each client's name, rate and schedule
 - **Intake packet:** a secure link the client fills out on their phone. It covers the PAR-Q+ questions, medical history, emergency contact, a photo of their ID and a typed-signature waiver.

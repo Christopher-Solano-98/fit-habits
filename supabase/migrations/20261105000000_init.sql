@@ -49,7 +49,6 @@ create table public.payments (
   client_id uuid not null references public.clients on delete cascade,
   amount numeric(10,2) not null check (amount > 0),
   paid_on date not null,
-  method text not null default 'cash' check (method in ('cash','zelle','cashapp','venmo','other')),
   note text,
   receipt_via text not null default 'none' check (receipt_via in ('text','email','both','none')),
   created_at timestamptz not null default now()
