@@ -28,6 +28,8 @@ export function gasRepo(conn: Connection): Repo {
       snap.settings = { ...defaultSettings(), ...snap.settings };
       snap.exercises ??= [];
       snap.exerciseLogs ??= [];
+      snap.workouts ??= [];
+      snap.sessions ??= [];
       return snap;
     },
     async put(table, row) {

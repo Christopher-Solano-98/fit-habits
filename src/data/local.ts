@@ -7,7 +7,7 @@ import { migrateSnapshot } from './migrate';
 // Demo mode: everything lives in this browser. Records go in localStorage,
 // uploaded files in IndexedDB (localStorage is too small for photos and PDFs).
 // v2: the main app starts with a clean slate (v1 started with sample clients).
-const KEY = IS_SAMPLE ? 'fithabits.sample.v3' : 'fithabits.demo.v2';
+const KEY = IS_SAMPLE ? 'fithabits.sample.v4' : 'fithabits.demo.v2';
 
 function read(): Snapshot | null {
   try {
@@ -48,6 +48,7 @@ export function dropClientRows(s: Snapshot, clientId: string) {
   s.files = s.files.filter((r) => r.clientId !== clientId);
   s.intakes = s.intakes.filter((r) => r.clientId !== clientId);
   s.exerciseLogs = (s.exerciseLogs ?? []).filter((r) => r.clientId !== clientId);
+  s.sessions = (s.sessions ?? []).filter((r) => r.clientId !== clientId);
 }
 
 export function localRepo(): Repo {

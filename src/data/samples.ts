@@ -1,4 +1,4 @@
-import type { Client, Goal, Measurement, Payment, Snapshot } from '@shared/types.ts';
+import type { Client, Goal, Measurement, Payment, Snapshot, Workout } from '@shared/types.ts';
 import { addDays, addMonths, startOfWeek, todayIso } from '@shared/dates.ts';
 import { defaultMotivations, defaultSettings, defaultTemplates } from './defaults';
 import { nowIso, uid } from './repo';
@@ -81,14 +81,33 @@ export function sampleSnapshot(): Snapshot {
     intakes: [],
     exercises: [],
     exerciseLogs: [],
+    workouts: sampleWorkouts(created),
+    sessions: [],
   };
   migrateSnapshot(snap);
+  const upper = snap.workouts[0];
+  snap.sessions.push({
+    id: uid(), clientId: marcus.id, date: addDays(today, -2), name: upper.name, workoutId: upper.id, note: null, createdAt: created, completedAt: created,
+    items: upper.items.map((i) => ({ ...i, id: uid(), done: true, value: null, reps: null, logId: null })),
+  });
   return snap;
+}
+
+function sampleWorkouts(created: string): Workout[] {
+  const w = (name: string, items: [string, string][]): Workout => ({
+    id: uid(), name, createdAt: created, updatedAt: created,
+    items: items.map(([exerciseId, plan]) => ({ id: uid(), exerciseId, plan })),
+  });
+  return [
+    w('Upper body A', [['b-bench', '4 × 8'], ['b-barbell-row', '4 × 8'], ['b-ohp', '3 × 10'], ['b-pullups', '3 × max'], ['b-tricep-pushdown', '3 × 12']]),
+    w('Lower body', [['b-back-squat', '5 × 5'], ['b-rdl', '3 × 10'], ['b-lunge', '3 × 12 each leg'], ['b-calf-raise', '3 × 15'], ['b-plank', '3 × 0:45']]),
+    w('Calisthenics circuit', [['b-pushups', '3 × max'], ['b-pullups', '3 × max'], ['b-dips', '3 × 10'], ['b-bw-squats', '3 × 20'], ['b-burpees', '3 × 10'], ['b-l-sit', '3 × 0:20']]),
+  ];
 }
 
 export function emptySnapshot(): Snapshot {
   return {
     settings: defaultSettings(), clients: [], payments: [], measurements: [], goals: [], files: [],
-    templates: defaultTemplates(), motivations: defaultMotivations(), intakes: [], exercises: [], exerciseLogs: [],
+    templates: defaultTemplates(), motivations: defaultMotivations(), intakes: [], exercises: [], exerciseLogs: [], workouts: [], sessions: [],
   };
 }

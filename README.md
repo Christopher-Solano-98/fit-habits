@@ -19,6 +19,10 @@ It's a web app that installs to the phone's Home Screen (a PWA), so there's no A
   - goals with progress bars
   - body-scan reminders every N months
   - a "Share progress" text to send the client
+- **Workouts:**
+  - build a client's workout for the day: add exercises from the library, write the plan ("3 × 10"), reorder or remove, check each one off and enter results
+  - finishing adds the results to the client's Progress charts and personal bests
+  - save any workout to a reusable library ("Upper body A"), start from it for any client, or repeat a client's last workout
 - **Messages:** a weekly motivation message on a schedule, sent by text and/or email, rotating through an editable library
 - **Reports:** week, 2 weeks, month and year views, plus a CSV export for taxes. Weekly, biweekly and monthly report emails go out automatically.
 

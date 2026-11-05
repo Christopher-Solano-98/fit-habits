@@ -12,9 +12,10 @@ import { nowIso, uid } from '../data/repo';
 import { Avatar, Empty, Header, Pill, QuickText, Seg } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { LineChart } from '../components/LineChart';
+import { WorkoutsTab } from './Workouts';
 import { fullName, money } from '../lib/util';
 
-type Tab = 'info' | 'pay' | 'progress' | 'files';
+type Tab = 'info' | 'pay' | 'workouts' | 'progress' | 'files';
 
 export function ClientDetail() {
   const { id } = useParams();
@@ -44,10 +45,11 @@ export function ClientDetail() {
         <Link className="action action-primary" to={`/log?client=${c.id}`}><Icon name="cash" /> Log payment</Link>
       </div>
 
-      <Seg<Tab> value={tab} options={[['info', 'Info'], ['pay', 'Payments'], ['progress', 'Progress'], ['files', 'Files']]} onChange={(t) => setParams({ tab: t }, { replace: true })} />
+      <Seg<Tab> value={tab} options={[['info', 'Info'], ['pay', 'Pay'], ['workouts', 'Workouts'], ['progress', 'Progress'], ['files', 'Files']]} onChange={(t) => setParams({ tab: t }, { replace: true })} />
 
       {tab === 'info' && <InfoTab c={c} />}
       {tab === 'pay' && <PaymentsTab c={c} />}
+      {tab === 'workouts' && <WorkoutsTab c={c} />}
       {tab === 'progress' && <ProgressTab c={c} />}
       {tab === 'files' && <FilesTab c={c} />}
 

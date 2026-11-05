@@ -27,10 +27,12 @@ var TABLES = {
   intakes: { id: 's', clientId: 's', token: 's', createdAt: 's', completedAt: 's', answers: 'j' },
   exercises: { id: 's', name: 's', group: 's', kind: 's', createdAt: 's' },
   exerciseLogs: { id: 's', clientId: 's', exerciseId: 's', date: 's', value: 'n', reps: 'n', note: 's', createdAt: 's' },
+  workouts: { id: 's', name: 's', items: 'j', createdAt: 's', updatedAt: 's' },
+  sessions: { id: 's', clientId: 's', date: 's', name: 's', items: 'j', workoutId: 's', completedAt: 's', note: 's', createdAt: 's' },
   notices: { id: 's', clientId: 's', kind: 's', channel: 's', to: 's', body: 's', status: 's', error: 's', localDate: 's', createdAt: 's' }
 };
-var APP_TABLES = ['clients', 'payments', 'measurements', 'goals', 'files', 'templates', 'motivations', 'intakes', 'exercises', 'exerciseLogs'];
-var CHILD_TABLES = ['payments', 'measurements', 'goals', 'files', 'intakes', 'exerciseLogs'];
+var APP_TABLES = ['clients', 'payments', 'measurements', 'goals', 'files', 'templates', 'motivations', 'intakes', 'exercises', 'exerciseLogs', 'workouts', 'sessions'];
+var CHILD_TABLES = ['payments', 'measurements', 'goals', 'files', 'intakes', 'exerciseLogs', 'sessions'];
 var INTAKE_MAX_DAYS = 21;
 
 // ---------- setup ----------
@@ -159,6 +161,7 @@ function readTable_(table) {
     head.forEach(function (k, i) { if (types[k]) o[k] = fromCell_(types[k], r[i]); });
     if (table === 'clients' && !Array.isArray(o.sessionDays)) o.sessionDays = [];
     if (table === 'measurements' && !o.values) o.values = {};
+    if ((table === 'workouts' || table === 'sessions') && !Array.isArray(o.items)) o.items = [];
     return o;
   });
 }

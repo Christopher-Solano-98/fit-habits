@@ -158,6 +158,41 @@ export interface Snapshot {
   intakes: IntakeRequest[];
   exercises: Exercise[];
   exerciseLogs: ExerciseLog[];
+  workouts: Workout[];
+  sessions: Session[];
+}
+
+/** One exercise in a workout. In a session it can be checked off with a result. */
+export interface WorkoutItem {
+  id: string;
+  exerciseId: string;
+  plan: string; // free text: "3 × 10", "4 × 8 @ 135", "1 mile"
+  done?: boolean;
+  value?: number | null; // result: lb, reps or seconds (by exercise kind)
+  reps?: number | null; // result reps for weight exercises
+  logId?: string | null; // the exercise log this result was saved as
+}
+
+/** A reusable workout in the trainer's library. */
+export interface Workout {
+  id: string;
+  name: string;
+  items: WorkoutItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A workout for one client on one day. */
+export interface Session {
+  id: string;
+  clientId: string;
+  date: string; // YYYY-MM-DD
+  name: string;
+  items: WorkoutItem[];
+  workoutId: string | null; // the library workout it came from, if any
+  completedAt: string | null;
+  note: string | null;
+  createdAt: string;
 }
 
 export type TableName = Exclude<keyof Snapshot, 'settings'>;

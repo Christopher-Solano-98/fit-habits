@@ -20,7 +20,7 @@ export function Clients() {
       <Header
         title="Clients"
         sub={`${activeCount} active`}
-        action={<Link to="/clients/new" className="btn btn-dark"><Icon name="plus" size={16} stroke={2.4} /> Add client</Link>}
+        action={<div className="header-actions"><Link to="/workouts" className="btn btn-outline">Workouts</Link><Link to="/clients/new" className="btn btn-dark"><Icon name="plus" size={16} stroke={2.4} /> Add client</Link></div>}
       />
       <label className="search">
         <Icon name="search" size={16} />

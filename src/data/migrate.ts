@@ -13,6 +13,8 @@ export function migrateSnapshot(s: Snapshot): boolean {
   let changed = false;
   if (!s.exercises) { s.exercises = []; changed = true; }
   if (!s.exerciseLogs) { s.exerciseLogs = []; changed = true; }
+  if (!s.workouts) { s.workouts = []; changed = true; }
+  if (!s.sessions) { s.sessions = []; changed = true; }
   for (const m of s.measurements) {
     const values = m.values as Record<string, number>;
     for (const [old, exerciseId] of Object.entries(LEGACY)) {

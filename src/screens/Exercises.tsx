@@ -10,26 +10,34 @@ import { Empty, Header, Seg } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { LineChart } from '../components/LineChart';
 
-/** Pick an exercise to start tracking for a client: library by body part, search, or create your own. */
+/** Pick an exercise to start tracking for a client. */
 export function ExercisePicker() {
   const { id } = useParams();
   const { client, snap } = useStore();
   const nav = useNavigate();
   const c = client(id!);
+  if (!c) return null;
+  const tracking = new Set(snap.exerciseLogs.filter((l) => l.clientId === c.id).map((l) => l.exerciseId));
+  return (
+    <div className="page">
+      <Header title="Add exercise" sub={`for ${c.firstName} ${c.lastName}`} back />
+      <ExerciseLibrary marked={tracking} markLabel="Tracking" onPick={(e) => nav(`/clients/${c.id}/exercise/${e.id}`, { replace: true })} />
+    </div>
+  );
+}
+
+/** The exercise library by body part, with search and "create your own". Used by the picker and the workout builder. */
+export function ExerciseLibrary({ onPick, marked, markLabel }: { onPick: (e: Exercise) => void; marked?: Set<string>; markLabel?: string }) {
+  const { snap } = useStore();
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
-  if (!c) return null;
-
-  const tracking = new Set(snap.exerciseLogs.filter((l) => l.clientId === c.id).map((l) => l.exerciseId));
   const all = allExercises(snap.exercises);
   const term = q.trim().toLowerCase();
   const match = (e: Exercise) => !term || e.name.toLowerCase().includes(term) || e.group.toLowerCase().includes(term);
   const groups = [...EXERCISE_GROUPS, ...new Set(snap.exercises.map((e) => e.group).filter((g) => !(EXERCISE_GROUPS as readonly string[]).includes(g)))];
-  const open = (e: Exercise) => nav(`/clients/${c.id}/exercise/${e.id}`, { replace: true });
 
   return (
-    <div className="page">
-      <Header title="Add exercise" sub={`for ${c.firstName} ${c.lastName}`} back />
+    <>
       <label className="search">
         <Icon name="search" size={16} />
         <span className="sr">Search exercises</span>
@@ -45,12 +53,12 @@ export function ExercisePicker() {
             <div className="section-head"><h2>{g}</h2></div>
             <div className="card">
               {list.map((e) => (
-                <button key={e.id} className="row row-link text-left" onClick={() => open(e)}>
+                <button key={e.id} className="row row-link text-left" onClick={() => onPick(e)}>
                   <span className="grow">
                     <strong>{e.name}{e.id.startsWith('b-') ? '' : ' ★'}</strong>
                     <span className="small">{KINDS[e.kind].label}</span>
                   </span>
-                  {tracking.has(e.id) ? <span className="pill pill-paid">Tracking</span> : <Icon name="plus" size={18} />}
+                  {marked?.has(e.id) ? <span className="pill pill-paid">{markLabel}</span> : <Icon name="plus" size={18} />}
                 </button>
               ))}
             </div>
@@ -58,8 +66,8 @@ export function ExercisePicker() {
         );
       })}
       {term && !all.some(match) && <Empty>No exercise called "{q}". Tap "Create your own exercise" to add it.</Empty>}
-      {creating && <CreateExercise initialName={q} onClose={() => setCreating(false)} onCreated={open} />}
-    </div>
+      {creating && <CreateExercise initialName={q} onClose={() => setCreating(false)} onCreated={(e) => { setCreating(false); onPick(e); }} />}
+    </>
   );
 }
 
