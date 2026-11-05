@@ -146,6 +146,7 @@ export interface Settings {
   scanReminderMonths: number;
   timezone: string; // IANA zone used by the scheduled jobs, e.g. America/New_York
   waiverText: string; // shown on the client intake form and saved with each signature
+  exerciseLinks: Record<string, string>; // exercise id → the trainer's own how-to video link
 }
 
 export interface Snapshot {
@@ -162,13 +163,46 @@ export interface Snapshot {
   exerciseLogs: ExerciseLog[];
   workouts: Workout[];
   sessions: Session[];
+  programs: Program[];
+}
+
+/** One exercise in a program day, with a plan for each phase ("3 × 10", "4 × 8", …). */
+export interface ProgramItem {
+  id: string;
+  exerciseId: string;
+  plans: string[]; // one per phase
+}
+
+export interface ProgramDay {
+  id: string;
+  name: string; // "Day 1 · Upper"
+  items: ProgramItem[];
+}
+
+export interface ProgramPhase {
+  label: string; // "Progress", "Regress (deload)"
+  note: string;
+}
+
+/** A multi-week plan (default 8 weeks in 2-week phases). clientId null = a reusable library program. */
+export interface Program {
+  id: string;
+  name: string;
+  clientId: string | null;
+  phaseWeeks: number; // weeks per phase (2)
+  phases: ProgramPhase[]; // 4 phases → 8 weeks
+  days: ProgramDay[];
+  startDate: string | null; // YYYY-MM-DD, for a client's program
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** One exercise in a workout. In a session it can be checked off with a result. */
 export interface WorkoutItem {
   id: string;
   exerciseId: string;
-  plan: string; // free text: "3 × 10", "4 × 8 @ 135", "1 mile"
+  plan: string; // sets × reps: "3 × 8–10", "1 mile"
+  target?: number | null; // per-person target: lb, reps or seconds (by exercise kind)
   done?: boolean;
   value?: number | null; // result: lb, reps or seconds (by exercise kind)
   reps?: number | null; // result reps for weight exercises

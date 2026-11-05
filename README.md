@@ -23,6 +23,9 @@ It's a web app that installs to the phone's Home Screen (a PWA), so there's no A
   - build a client's workout for the day: add exercises from the library, write the plan ("3 × 10"), reorder or remove, check each one off and enter results
   - finishing adds the results to the client's Progress charts and personal bests
   - save any workout to a reusable library ("Upper body A"), start from it for any client, or repeat a client's last workout
+- **Per-person targets:** each exercise in a workout has sets × rep range plus a target weight / reps / time, pre-filled from that client's last numbers ("Last: 135 lb × 8 · Oct 30 · Use")
+- **8-week programs:** 4 two-week phases (Foundation → Progress → Regress/deload → Peak, renamable), workout days, a plan per exercise per phase. Assign to a client with a start date, start today's workout from the current phase, save to the program library, and text/email the client a plan link: a read-only page (no login, the plan lives in the link) where every exercise links to a how-to video (the trainer's own link or a YouTube search) and each day has its own link.
+- **Waiver:** the trainer's own wording (Settings); every intake saves a signed waiver document to the client's files.
 - **Messages:** a weekly motivation message on a schedule, sent by text and/or email, rotating through an editable library
 - **Reports:** week, 2 weeks, month and year views, plus a CSV export for taxes. Weekly, biweekly and monthly report emails go out automatically.
 

@@ -14,6 +14,7 @@ export function defaultSettings(): Settings {
     reports: { weekly: true, biweekly: true, monthly: true },
     scanReminderMonths: 4,
     waiverText: DEFAULT_WAIVER,
+    exerciseLinks: {},
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
   };
 }

@@ -1,23 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import type { Client, Session, Workout, WorkoutItem } from '@shared/types.ts';
+import type { Client, ExerciseLog, Session, Workout, WorkoutItem } from '@shared/types.ts';
 import { fmtDay, fmtLong, fmtShort } from '@shared/dates.ts';
 import { fmtWith, parseWith } from '@shared/metrics.ts';
-import { exerciseDef, findExercise, KINDS } from '@shared/exercises.ts';
+import { exerciseDef, findExercise, fmtLog, KINDS } from '@shared/exercises.ts';
 import { useStore } from '../data/store';
 import { nowIso, uid } from '../data/repo';
 import { Empty, Header } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { ExerciseLibrary } from './Exercises';
+import { ClientProgramCard, ProgramsSection } from './Programs';
 import { byName, fullName } from '../lib/util';
 
-const PLAN_HINT = { weight: '3 × 8 @ 135', reps: '3 × 12', hold: '3 × 0:45', time: '1 mile' } as const;
+const PLAN_HINT = { weight: '3 × 8–10', reps: '3 × 10–12', hold: '3 sets', time: '1 mile' } as const;
+const TARGET_LABEL = { weight: 'Weight lb', reps: 'Target reps', hold: 'Hold m:ss', time: 'Time m:ss' } as const;
 
-const freshItems = (items: WorkoutItem[]): WorkoutItem[] =>
-  items.map((i) => ({ id: uid(), exerciseId: i.exerciseId, plan: i.plan, done: false, value: null, reps: null, logId: null }));
+/** The client's most recent logged numbers for an exercise. */
+export function lastLog(logs: ExerciseLog[], clientId: string, exerciseId: string, before?: string): ExerciseLog | undefined {
+  return logs
+    .filter((l) => l.clientId === clientId && l.exerciseId === exerciseId && (!before || l.date <= before))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.createdAt < b.createdAt ? 1 : -1))[0];
+}
 
-function newSession(clientId: string, date: string, name: string, items: WorkoutItem[], workoutId: string | null): Session {
-  return { id: uid(), clientId, date, name, items: freshItems(items), workoutId, completedAt: null, note: null, createdAt: nowIso() };
+/** Copies a workout's exercises for one client. Each target starts from that client's
+ *  last numbers for the exercise, falling back to the workout's own default. */
+export function itemsForClient(items: WorkoutItem[], clientId: string, logs: ExerciseLog[]): WorkoutItem[] {
+  return items.map((i) => ({
+    id: uid(), exerciseId: i.exerciseId, plan: i.plan, done: false, value: null, reps: null, logId: null,
+    target: lastLog(logs, clientId, i.exerciseId)?.value ?? i.target ?? null,
+  }));
+}
+
+export function newSession(clientId: string, date: string, name: string, items: WorkoutItem[], workoutId: string | null, logs: ExerciseLog[]): Session {
+  return { id: uid(), clientId, date, name, items: itemsForClient(items, clientId, logs), workoutId, completedAt: null, note: null, createdAt: nowIso() };
 }
 
 const doneCount = (s: Session) => s.items.filter((i) => i.done).length;
@@ -32,6 +47,7 @@ export function WorkoutsTab({ c }: { c: Client }) {
 
   return (
     <div className="stack">
+      <ClientProgramCard c={c} />
       {todays.map((s) => (
         <Link key={s.id} to={`/clients/${c.id}/workout/${s.id}`} className="card pad today-workout">
           <span className="eyebrow">Today{s.completedAt ? ' · done' : ''}</span>
@@ -67,7 +83,7 @@ function StartSheet({ c, onClose }: { c: Client; onClose: () => void }) {
   const nav = useNavigate();
   const last = snap.sessions.filter((s) => s.clientId === c.id && s.items.length).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
   const start = (name: string, items: WorkoutItem[], workoutId: string | null) => {
-    const s = newSession(c.id, today, name, items, workoutId);
+    const s = newSession(c.id, today, name, items, workoutId, snap.exerciseLogs);
     save('sessions', s);
     nav(`/clients/${c.id}/workout/${s.id}`);
   };
@@ -107,7 +123,7 @@ function itemNames(items: WorkoutItem[], custom: Parameters<typeof findExercise>
 }
 
 /** Saves `value` shortly after it stops changing, and on leaving the screen. */
-function useAutosave<T>(value: T, persist: (v: T) => void, ms = 700) {
+export function useAutosave<T>(value: T, persist: (v: T) => void, ms = 700) {
   const latest = useRef(value);
   const pending = useRef(false);
   const first = useRef(true);
@@ -159,7 +175,7 @@ export function SessionScreen() {
     if (!s.items.length) return toast('Add exercises first');
     const name = asNew ? prompt('Name this workout', s.name === 'Workout' ? '' : s.name)?.trim() : template!.name;
     if (!name) return;
-    const items = s.items.map((i) => ({ id: uid(), exerciseId: i.exerciseId, plan: i.plan }));
+    const items = s.items.map((i) => ({ id: uid(), exerciseId: i.exerciseId, plan: i.plan, target: i.target ?? null }));
     const w: Workout = asNew || !template ? { id: uid(), name, items, createdAt: nowIso(), updatedAt: nowIso() } : { ...template, items, updatedAt: nowIso() };
     save('workouts', w);
     set({ workoutId: w.id, name });
@@ -167,7 +183,7 @@ export function SessionScreen() {
   };
 
   const repeatToday = () => {
-    const n = newSession(c.id, today, s.name, s.items, s.workoutId);
+    const n = newSession(c.id, today, s.name, s.items, s.workoutId, snap.exerciseLogs);
     save('sessions', n);
     nav(`/clients/${c.id}/workout/${n.id}`, { replace: true });
     setS(n);
@@ -188,7 +204,7 @@ export function SessionScreen() {
         <input className="inline-select" type="date" aria-label="Workout date" value={s.date} max={today} onChange={(e) => set({ date: e.target.value || s.date })} />
       </div>
 
-      <ItemsEditor items={s.items} onChange={(items) => set({ items })} mode="session" />
+      <ItemsEditor items={s.items} onChange={(items) => set({ items })} mode="session" clientId={c.id} date={s.date} />
       <button className="btn btn-outline btn-block" onClick={() => setAdding(true)}><Icon name="plus" size={16} /> Add exercise</button>
 
       <label>Notes<textarea rows={2} value={s.note ?? ''} placeholder="How did it go?" onChange={(e) => set({ note: e.target.value || null })} /></label>
@@ -203,12 +219,12 @@ export function SessionScreen() {
       {s.date < today && <button className="btn btn-dark btn-block" onClick={repeatToday}>Repeat this workout today</button>}
       <button className="btn-ghost danger" onClick={remove}>Delete workout</button>
 
-      {adding && <AddExerciseSheet onClose={() => setAdding(false)} onPick={(exerciseId) => { set({ items: [...s.items, { id: uid(), exerciseId, plan: '', done: false, value: null, reps: null, logId: null }] }); setAdding(false); }} />}
+      {adding && <AddExerciseSheet onClose={() => setAdding(false)} onPick={(exerciseId) => { set({ items: [...s.items, { id: uid(), exerciseId, plan: '', done: false, value: null, reps: null, logId: null, target: lastLog(snap.exerciseLogs, c.id, exerciseId)?.value ?? null }] }); setAdding(false); }} />}
     </div>
   );
 }
 
-function AddExerciseSheet({ onPick, onClose }: { onPick: (exerciseId: string) => void; onClose: () => void }) {
+export function AddExerciseSheet({ onPick, onClose }: { onPick: (exerciseId: string) => void; onClose: () => void }) {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet sheet-tall" role="dialog" aria-label="Add exercise" onClick={(e) => e.stopPropagation()}>
@@ -219,8 +235,9 @@ function AddExerciseSheet({ onPick, onClose }: { onPick: (exerciseId: string) =>
   );
 }
 
-/** The exercise list of a session (check off + results) or a library workout (plan only). */
-function ItemsEditor({ items, onChange, mode }: { items: WorkoutItem[]; onChange: (items: WorkoutItem[]) => void; mode: 'session' | 'template' }) {
+/** The exercise list of a session (check off + results) or a library workout.
+ *  Each exercise has a plan (sets × rep range) and a target (weight, reps or time). */
+function ItemsEditor({ items, onChange, mode, clientId, date }: { items: WorkoutItem[]; onChange: (items: WorkoutItem[]) => void; mode: 'session' | 'template'; clientId?: string; date?: string }) {
   const { snap } = useStore();
   const update = (id: string, patch: Partial<WorkoutItem>) => onChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   const move = (idx: number) => { const next = [...items]; [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]; onChange(next); };
@@ -231,16 +248,29 @@ function ItemsEditor({ items, onChange, mode }: { items: WorkoutItem[]; onChange
       {items.map((i, idx) => {
         const e = findExercise(i.exerciseId, snap.exercises);
         if (!e) return null;
+        const last = clientId ? lastLog(snap.exerciseLogs, clientId, e.id, date) : undefined;
+        const toggle = () => update(i.id, { done: !i.done, value: !i.done && i.value == null ? i.target ?? null : i.value });
         return (
           <div className={`wk-item${i.done ? ' wk-done' : ''}`} key={i.id}>
             {mode === 'session' && (
-              <button type="button" className="wk-check" aria-pressed={!!i.done} aria-label={`${e.name} done`} onClick={() => update(i.id, { done: !i.done })}>
+              <button type="button" className="wk-check" aria-pressed={!!i.done} aria-label={`${e.name} done`} onClick={toggle}>
                 {i.done && <Icon name="check" size={18} stroke={3} />}
               </button>
             )}
             <div className="grow">
               <strong>{e.name}</strong>
-              <input className="wk-plan" aria-label={`${e.name} plan`} placeholder={`Plan, e.g. ${PLAN_HINT[e.kind]}`} value={i.plan} onChange={(ev) => update(i.id, { plan: ev.target.value })} />
+              <div className="wk-plan-row">
+                <input className="wk-plan" aria-label={`${e.name} sets and reps`} placeholder={`Sets × reps, e.g. ${PLAN_HINT[e.kind]}`} value={i.plan} onChange={(ev) => update(i.id, { plan: ev.target.value })} />
+                <NumberInput kind={e.kind} value={i.target ?? null} label={`${e.name} ${mode === 'template' ? 'default' : 'target'}`} placeholder={TARGET_LABEL[e.kind]} onChange={(v) => update(i.id, { target: v })} />
+              </div>
+              {mode === 'session' && (
+                last ? (
+                  <span className="wk-last small">
+                    Last: {fmtLog(e, last)} · {fmtShort(last.date)}
+                    {last.value !== i.target && <button type="button" className="link-btn sm" onClick={() => update(i.id, { target: last.value })}>Use</button>}
+                  </span>
+                ) : <span className="wk-last small">First time doing this. Set a starting {e.kind === 'weight' ? 'weight' : 'target'}.</span>
+              )}
               {mode === 'session' && i.done && <ResultInputs item={i} kind={e.kind} onChange={(patch) => update(i.id, patch)} />}
             </div>
             <div className="wk-tools">
@@ -254,14 +284,25 @@ function ItemsEditor({ items, onChange, mode }: { items: WorkoutItem[]; onChange
   );
 }
 
-function ResultInputs({ item, kind, onChange }: { item: WorkoutItem; kind: keyof typeof KINDS; onChange: (p: Partial<WorkoutItem>) => void }) {
+/** A number box that understands m:ss for timed exercises. */
+function NumberInput({ kind, value, label, placeholder, onChange }: { kind: keyof typeof KINDS; value: number | null; label: string; placeholder: string; onChange: (v: number | null) => void }) {
   const def = exerciseDef({ id: '', name: '', group: '', kind, createdAt: '' });
-  const [raw, setRaw] = useState(item.value ? fmtWith(def, item.value).replace(/ (lb|reps)$/, '') : '');
-  const label = kind === 'weight' ? 'Weight (lb)' : kind === 'reps' ? 'Reps' : 'Time (m:ss)';
+  const show = (v: number | null) => (v ? fmtWith(def, v).replace(/ (lb|reps)$/, '') : '');
+  const [raw, setRaw] = useState(show(value));
+  // Follow outside changes (e.g. "Use" last numbers) without fighting what's being typed.
+  useEffect(() => { if (parseWith(def, raw) !== value) setRaw(show(value)); }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <input className="wk-target" aria-label={label} placeholder={placeholder} inputMode={KINDS[kind].time ? 'text' : 'decimal'} value={raw}
+      onChange={(ev) => { setRaw(ev.target.value); onChange(parseWith(def, ev.target.value)); }} />
+  );
+}
+
+function ResultInputs({ item, kind, onChange }: { item: WorkoutItem; kind: keyof typeof KINDS; onChange: (p: Partial<WorkoutItem>) => void }) {
+  const label = kind === 'weight' ? 'Did (lb)' : kind === 'reps' ? 'Did (reps)' : 'Did (m:ss)';
   return (
     <div className="wk-result">
       <label>{label}
-        <input inputMode={KINDS[kind].time ? 'text' : 'decimal'} value={raw} onChange={(e) => { setRaw(e.target.value); onChange({ value: parseWith(def, e.target.value) }); }} />
+        <NumberInput kind={kind} value={item.value ?? null} label={`${label} result`} placeholder="" onChange={(v) => onChange({ value: v })} />
       </label>
       {kind === 'weight' && (
         <label>Reps<input inputMode="numeric" value={item.reps ?? ''} onChange={(e) => onChange({ reps: Number(e.target.value) || null })} /></label>
@@ -282,7 +323,9 @@ export function WorkoutLibrary() {
   };
   return (
     <div className="page">
-      <Header title="Workout library" sub="Reusable workouts for any client" back action={<button className="btn btn-dark" onClick={create}><Icon name="plus" size={16} stroke={2.4} /> New</button>} />
+      <Header title="Workouts & programs" sub="Reusable workouts and 8-week programs for any client" back />
+      <ProgramsSection />
+      <div className="section-head"><h2>Workouts</h2><button className="link-btn" onClick={create}>+ New workout</button></div>
       {list.length === 0 && <Empty>No saved workouts yet. Tap "New" to build one, or save any client's workout to the library.</Empty>}
       <div className="stack">
         {list.map((w) => (
@@ -310,7 +353,7 @@ export function WorkoutTemplate() {
   const clients = snap.clients.filter((c) => c.active).sort(byName);
 
   const assign = (c: Client) => {
-    const s = newSession(c.id, today, w.name, w.items, w.id);
+    const s = newSession(c.id, today, w.name, w.items, w.id, snap.exerciseLogs);
     save('sessions', s);
     nav(`/clients/${c.id}/workout/${s.id}`);
   };

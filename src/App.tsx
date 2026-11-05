@@ -15,6 +15,7 @@ import { ClientForm } from './screens/ClientForm';
 import { Measure } from './screens/Measure';
 import { ExerciseDetail, ExercisePicker } from './screens/Exercises';
 import { SessionScreen, WorkoutLibrary, WorkoutTemplate } from './screens/Workouts';
+import { PlanView, ProgramEditor } from './screens/Programs';
 import { LogPayment } from './screens/LogPayment';
 import { Messages } from './screens/Messages';
 import { Reports } from './screens/Reports';
@@ -60,6 +61,7 @@ function TrainerApp() {
           <Route path="/clients/:id/workout/:sid" element={<SessionScreen />} />
           <Route path="/workouts" element={<WorkoutLibrary />} />
           <Route path="/workouts/:wid" element={<WorkoutTemplate />} />
+          <Route path="/programs/:pid" element={<ProgramEditor />} />
           <Route path="/log" element={<LogPayment />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/reports" element={<Reports />} />
@@ -78,6 +80,7 @@ export function App() {
     <HashRouter>
       <Routes>
         <Route path="/intake/:token" element={<main className="app app-public"><Intake /></main>} />
+        <Route path="/plan/:data" element={<main className="app app-public"><PlanView /></main>} />
         <Route path="*" element={<TrainerApp />} />
       </Routes>
     </HashRouter>

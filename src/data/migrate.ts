@@ -1,5 +1,6 @@
 import type { Snapshot } from '@shared/types.ts';
 import { uid } from './repo';
+import { defaultSettings } from './defaults';
 
 // Early builds stored a few fixed exercises (push-ups, plank, mile, squat,
 // bench, deadlift) as body measurements. They're now exercise logs, which
@@ -15,6 +16,10 @@ export function migrateSnapshot(s: Snapshot): boolean {
   if (!s.exerciseLogs) { s.exerciseLogs = []; changed = true; }
   if (!s.workouts) { s.workouts = []; changed = true; }
   if (!s.sessions) { s.sessions = []; changed = true; }
+  if (!s.programs) { s.programs = []; changed = true; }
+  // Settings added in later versions (waiver wording, exercise links…).
+  const full = { ...defaultSettings(), ...s.settings };
+  if (Object.keys(full).length !== Object.keys(s.settings ?? {}).length) { s.settings = full; changed = true; }
   for (const m of s.measurements) {
     const values = m.values as Record<string, number>;
     for (const [old, exerciseId] of Object.entries(LEGACY)) {

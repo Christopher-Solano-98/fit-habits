@@ -1,4 +1,5 @@
-import type { Client, Goal, Measurement, Payment, Snapshot, Workout } from '@shared/types.ts';
+import type { Client, Goal, Measurement, Payment, Program, Snapshot, Workout } from '@shared/types.ts';
+import { DEFAULT_PHASES } from '@shared/programs.ts';
 import { addDays, addMonths, startOfWeek, todayIso } from '@shared/dates.ts';
 import { defaultMotivations, defaultSettings, defaultTemplates } from './defaults';
 import { nowIso, uid } from './repo';
@@ -83,6 +84,7 @@ export function sampleSnapshot(): Snapshot {
     exerciseLogs: [],
     workouts: sampleWorkouts(created),
     sessions: [],
+    programs: [sampleProgram(created)],
   };
   migrateSnapshot(snap);
   const upper = snap.workouts[0];
@@ -105,9 +107,21 @@ function sampleWorkouts(created: string): Workout[] {
   ];
 }
 
+function sampleProgram(created: string): Program {
+  const item = (exerciseId: string, plans: string[]) => ({ id: uid(), exerciseId, plans });
+  return {
+    id: uid(), name: '8-week strength foundation', clientId: null, phaseWeeks: 2, phases: DEFAULT_PHASES.map((p) => ({ ...p })), startDate: null, createdAt: created, updatedAt: created,
+    days: [
+      { id: uid(), name: 'Day 1 · Upper', items: [item('b-bench', ['3 × 10', '4 × 8', '2 × 10', '5 × 5']), item('b-barbell-row', ['3 × 10', '4 × 8', '2 × 10', '5 × 5']), item('b-ohp', ['3 × 10', '3 × 8', '2 × 10', '4 × 6']), item('b-pullups', ['3 × max', '4 × max', '2 × max', '4 × max'])] },
+      { id: uid(), name: 'Day 2 · Lower', items: [item('b-back-squat', ['3 × 10', '4 × 8', '2 × 10', '5 × 5']), item('b-rdl', ['3 × 10', '3 × 8', '2 × 10', '4 × 6']), item('b-lunge', ['3 × 10 each', '3 × 12 each', '2 × 10 each', '3 × 12 each']), item('b-plank', ['3 × 0:30', '3 × 0:45', '2 × 0:30', '3 × 1:00'])] },
+      { id: uid(), name: 'Day 3 · Conditioning', items: [item('b-burpees', ['3 × 8', '4 × 10', '2 × 8', '4 × 12']), item('b-pushups', ['3 × max', '4 × max', '2 × max', '4 × max']), item('b-mile', ['1 mile easy', '1 mile steady', '1 mile easy', '1 mile for time'])] },
+    ],
+  };
+}
+
 export function emptySnapshot(): Snapshot {
   return {
     settings: defaultSettings(), clients: [], payments: [], measurements: [], goals: [], files: [],
-    templates: defaultTemplates(), motivations: defaultMotivations(), intakes: [], exercises: [], exerciseLogs: [], workouts: [], sessions: [],
+    templates: defaultTemplates(), motivations: defaultMotivations(), intakes: [], exercises: [], exerciseLogs: [], workouts: [], sessions: [], programs: [],
   };
 }

@@ -8,7 +8,7 @@ import { nowIso, uid, type Repo, type Row } from './repo';
 // App objects are camelCase; columns are snake_case. Only top-level keys are
 // converted, so jsonb columns (values, answers, motivation…) keep their shape.
 
-const TABLES: TableName[] = ['clients', 'payments', 'measurements', 'goals', 'files', 'templates', 'motivations', 'intakes', 'exercises', 'exerciseLogs', 'workouts', 'sessions'];
+const TABLES: TableName[] = ['clients', 'payments', 'measurements', 'goals', 'files', 'templates', 'motivations', 'intakes', 'exercises', 'exerciseLogs', 'workouts', 'sessions', 'programs'];
 const BUCKET = 'client-files';
 
 const toSnake = (k: string) => k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());

@@ -30,6 +30,7 @@ export function gasRepo(conn: Connection): Repo {
       snap.exerciseLogs ??= [];
       snap.workouts ??= [];
       snap.sessions ??= [];
+      snap.programs ??= [];
       return snap;
     },
     async put(table, row) {

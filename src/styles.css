@@ -284,3 +284,27 @@ input[type=date]::-webkit-calendar-picker-indicator { margin-left: auto; }
 }
 select.inline-select { width: auto; height: 40px; line-height: 40px; }
 .card.dark select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23C9CDD4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 12px center !important; background-size: 16px !important; }
+
+.wk-plan-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 8px; }
+.wk-target { min-height: 38px !important; padding: 6px 10px !important; font-size: 14px !important; }
+.wk-last { display: flex; align-items: center; gap: 8px; }
+.link-btn.sm { min-height: 28px; font-size: 13px; padding: 0 4px; }
+
+.phase-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.phase-tab { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; min-height: 56px; border-radius: 12px; border: 1px solid #D8D5CC; background: var(--card); color: var(--ink); text-align: left; }
+.phase-tab span { font-size: 11px; color: var(--muted); }
+.phase-tab strong { font-size: 12.5px; line-height: 1.2; }
+.phase-tab.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.phase-tab.on span { color: #C9CDD4; }
+.phase-note { background: var(--green-tint); color: var(--green-ink); border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+.day-name { border: none !important; background: transparent !important; padding: 0 !important; min-height: 36px !important; font-weight: 700; font-size: 16px !important; flex: 1; }
+.pad-sm { padding: 10px 12px 12px; }
+.muted-link { color: var(--muted); }
+.program-card { display: flex; flex-direction: column; gap: 8px; border-color: var(--ink); }
+.program-card .eyebrow { color: var(--green); }
+.program-title { color: var(--ink); }
+.plan-view .row { min-height: 52px; }
+.plan-ex { display: flex; flex-direction: column; gap: 2px; color: var(--ink); }
+.plan-ex span:first-child { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--green-ink); text-decoration: underline; text-underline-offset: 3px; }
+.plan-dose { font-size: 14px; text-align: right; max-width: 45%; }
+.day-title { font-size: 16px; }
