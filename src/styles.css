@@ -264,3 +264,23 @@ input[type=date]::-webkit-calendar-picker-indicator { margin-left: auto; }
 .grid2 > *, .grid3 > * { min-width: 0; }
 .form input.inline-select[type=date] { height: 40px; width: 170px; }
 .card.dark input[type=time] { height: 46px; }
+
+/* iPhone Safari draws native selects with its own height and chevrons, so the
+   Gender box didn't line up with Birthday. Style selects like text inputs. */
+.form select, select.inline-select, .card.dark select {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 0 36px 0 12px;
+  line-height: 46px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235E6470' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+select.inline-select { width: auto; height: 40px; line-height: 40px; }
+.card.dark select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23C9CDD4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 12px center !important; background-size: 16px !important; }
