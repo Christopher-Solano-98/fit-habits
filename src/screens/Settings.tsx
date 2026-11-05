@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Settings as S } from '@shared/types.ts';
 import { useStore } from '../data/store';
 import { DEFAULT_WAIVER } from '@shared/waiver.ts';
 import { IS_SAMPLE } from '../lib/space';
 import { supabase } from '../data/supabase';
-import { parseConnectionCode, saveConnection } from '../data/connection';
+import { gasCall, getConnection, parseConnectionCode, saveConnection } from '../data/connection';
 import { Header } from '../components/ui';
+import { Icon } from '../components/Icon';
 
 export function Settings() {
   const { snap, saveSettings, repo, reload, toast } = useStore();
@@ -66,6 +67,7 @@ export function Settings() {
         ) : repo.mode === 'sheets' ? (
           <>
             <p className="small">Connected to your Google Sheet. Records live in the Sheet, files in a private Google Drive folder, and emails go out from your Gmail.</p>
+            <ConnectionStatus />
             <button className="btn btn-outline btn-block" onClick={() => { if (confirm('Disconnect this phone from your Google Sheet? Your data stays in the Sheet; you can reconnect with your code.')) { saveConnection(null); location.reload(); } }}>Disconnect this phone</button>
           </>
         ) : (
@@ -76,6 +78,32 @@ export function Settings() {
         )}
       </fieldset>
       <p className="small center">Fit Habits · built by SolanoOps</p>
+    </div>
+  );
+}
+
+interface Status { sender: string; expectedSender: string | null; senderProblem: string | null; emailsLeftToday: number; sheetUrl: string; texting: boolean }
+
+/** Live check of the Google connection: which account emails come from, quota, link to the Sheet. */
+function ConnectionStatus() {
+  const [st, setSt] = useState<Status | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    const conn = getConnection();
+    if (!conn) return;
+    gasCall<Status>(conn.api, { action: 'status', key: conn.key }).then(setSt).catch((e) => setErr((e as Error).message));
+  }, []);
+  if (err) return <p className="warn-text small">Couldn't check the connection: {err}</p>;
+  if (!st) return <p className="small">Checking connection…</p>;
+  return (
+    <div className="card">
+      <div className="row">
+        <span className={st.senderProblem ? 'warn-text' : 'ok'}><Icon name={st.senderProblem ? 'alert' : 'check'} size={18} /></span>
+        <span className="grow"><strong>{st.senderProblem ? 'Emails are paused' : `Emails send from ${st.sender}`}</strong>{st.senderProblem && <span className="small warn-text">{st.senderProblem}</span>}</span>
+      </div>
+      <div className="row"><span className="grow small">Emails left today</span><strong>{st.emailsLeftToday}</strong></div>
+      <div className="row"><span className="grow small">Automatic texts</span><strong>{st.texting ? 'On' : 'Off (opens Messages)'}</strong></div>
+      <a className="row row-link" href={st.sheetUrl} target="_blank" rel="noreferrer"><span className="grow"><strong>Open the Google Sheet</strong></span><Icon name="chevron" size={16} /></a>
     </div>
   );
 }

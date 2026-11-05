@@ -42,6 +42,8 @@ function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error('Open this script from its Google Sheet (Extensions → Apps Script) and run setup() again.');
   PROPS.setProperty('SHEET_ID', ss.getId());
+  // Every email goes out from the account that ran setup; sending is refused under any other account.
+  PROPS.setProperty('SENDER_EMAIL', Session.getEffectiveUser().getEmail());
   Object.keys(TABLES).forEach(function (t) { sheet_(t); });
   settingsSheet_();
   if (!PROPS.getProperty('FOLDER_ID')) {
@@ -56,7 +58,7 @@ function setup() {
   ScriptApp.newTrigger('hourly').timeBased().everyHours(1).create();
   var first = ss.getSheetByName('Sheet1');
   if (first && ss.getSheets().length > 1 && first.getLastRow() === 0) ss.deleteSheet(first);
-  Logger.log('Setup done. Next: Deploy → New deployment → Web app (Execute as: Me, Access: Anyone), then run connectionCode().');
+  Logger.log('Setup done. Emails will be sent from ' + PROPS.getProperty('SENDER_EMAIL') + '.\nNext: Deploy → New deployment → Web app (Execute as: Me, Access: Anyone), then run connectionCode(), then checkSetup().');
 }
 
 /** Run after deploying: logs the code to paste into the app's Settings → Connect. */
@@ -105,6 +107,7 @@ function route_(req) {
     case 'file': return getFile_(req.id);
     case 'deleteFile': return withLock_(function () { return deleteFile_(req.id); });
     case 'notify': return notify_(req);
+    case 'status': return status_();
     default: throw new Error('Unknown action ' + a);
   }
 }
@@ -305,7 +308,18 @@ function sendText_(phone, body) {
   return ok ? { ok: true } : { ok: false, error: 'twilio ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 300) };
 }
 
+function senderProblem_() {
+  var expected = PROPS.getProperty('SENDER_EMAIL');
+  var actual = Session.getEffectiveUser().getEmail();
+  if (expected && actual && actual.toLowerCase() !== expected.toLowerCase()) {
+    return 'Emails must come from ' + expected + ', but the app is running as ' + actual + '. Redeploy the web app while signed in as ' + expected + ' (Execute as: Me).';
+  }
+  return null;
+}
+
 function sendEmail_(to, subject, body, s) {
+  var problem = senderProblem_();
+  if (problem) return { ok: false, error: problem };
   try {
     MailApp.sendEmail({ to: to, subject: subject, body: body, name: (s && s.businessName) || 'Fit Habits', replyTo: (s && s.email) || undefined });
     return { ok: true };
@@ -490,4 +504,49 @@ function testReport() {
   var body = report_('weekly report (test)', week, FH.addDays(week, 6), readTable_('clients'), readTable_('payments'), s);
   sendEmail_(s.email, 'Fit Habits test report', body, s);
   Logger.log(body);
+}
+
+// ---------- checks ----------
+
+/** What the app shows under Settings when connected. */
+function status_() {
+  return {
+    sender: Session.getEffectiveUser().getEmail(),
+    expectedSender: PROPS.getProperty('SENDER_EMAIL'),
+    senderProblem: senderProblem_(),
+    emailsLeftToday: MailApp.getRemainingDailyQuota(),
+    sheetUrl: ss_().getUrl(),
+    texting: twilioReady_()
+  };
+}
+
+/** Run from the editor: prints a checklist of everything the app needs. */
+function checkSetup() {
+  var lines = [];
+  var ok = function (pass, text) { lines.push((pass ? '✅ ' : '❌ ') + text); return pass; };
+  var me = Session.getEffectiveUser().getEmail();
+  var sender = PROPS.getProperty('SENDER_EMAIL');
+  ok(!!sender, sender ? 'Emails send from ' + sender : 'setup() has not been run yet');
+  ok(!sender || sender.toLowerCase() === me.toLowerCase(), 'Running as ' + me + (sender && sender.toLowerCase() !== me.toLowerCase() ? ' (should be ' + sender + ')' : ''));
+  var sheetOk = false;
+  try { sheetOk = !!ss_(); } catch (e) { /* no sheet */ }
+  ok(sheetOk, sheetOk ? 'Google Sheet: ' + ss_().getName() : 'Google Sheet not found: run setup() from the sheet (Extensions → Apps Script)');
+  if (sheetOk) {
+    var missing = Object.keys(TABLES).filter(function (t) { return !ss_().getSheetByName(t); });
+    ok(missing.length === 0, missing.length ? 'Missing tabs: ' + missing.join(', ') + ' (run setup again)' : 'All data tabs present');
+  }
+  var folderOk = false;
+  try { folderOk = !!DriveApp.getFolderById(PROPS.getProperty('FOLDER_ID')); } catch (e) { /* none */ }
+  ok(folderOk, folderOk ? 'Private Drive folder for client files exists' : 'Drive folder missing: run setup()');
+  ok(!!PROPS.getProperty('APP_KEY'), 'App key created');
+  var hourly = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === 'hourly'; }).length;
+  ok(hourly === 1, hourly === 1 ? 'Hourly timer on (Friday message, reminders, reports)' : 'Hourly timer missing: run setup()');
+  var url = ScriptApp.getService().getUrl();
+  ok(!!url, url ? 'Web app deployed: ' + url : 'Web app not deployed: Deploy → New deployment → Web app');
+  var s = getSettings_();
+  ok(!!(s && s.email), s && s.email ? 'Reports and alerts go to ' + s.email : 'No email in the app yet: open the app → Settings → Your email');
+  ok(true, 'Emails left today: ' + MailApp.getRemainingDailyQuota());
+  lines.push(twilioReady_() ? '✅ Automatic texts on' : 'ℹ️ Automatic texts off (texts open the phone\'s Messages app until Twilio is added)');
+  Logger.log(lines.join('\n'));
+  return lines.join('\n');
 }

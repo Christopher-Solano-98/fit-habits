@@ -129,3 +129,30 @@ describe('Apps Script backend', () => {
     expect(report).toContain('NO PAYMENT LOGGED\n  Marcus Reed');
   });
 });
+
+describe('sending account', () => {
+  it('records the setup account and refuses to email from any other', () => {
+    const g = setup();
+    expect(g.props.SENDER_EMAIL).toBe('fit.habits96@gmail.com');
+    g.call('saveSettings', { settings: { businessName: 'Fit Habits', email: 'fit.habits96@gmail.com' } });
+    g.call('put', { table: 'clients', row: client({ channel: 'email' }) });
+    expect(g.call('notify', { clientId: 'c1', channel: 'email', body: 'Receipt' }).result).toEqual({ text: false, email: true });
+    g.ctx.__user = 'someone.else@gmail.com';
+    expect(g.call('notify', { clientId: 'c1', channel: 'email', body: 'Receipt' }).result).toEqual({ text: false, email: false });
+    expect(g.mail).toHaveLength(1);
+    expect(g.call('status').result).toMatchObject({ expectedSender: 'fit.habits96@gmail.com', senderProblem: expect.stringMatching(/must come from fit.habits96@gmail.com/) });
+  });
+
+  it('checkSetup lists what is done and what is missing', () => {
+    const g = setup();
+    let report = g.ctx.checkSetup();
+    expect(report).toContain('✅ Emails send from fit.habits96@gmail.com');
+    expect(report).toContain('✅ All data tabs present');
+    expect(report).toContain('✅ Hourly timer on');
+    expect(report).toContain('❌ No email in the app yet');
+    g.call('saveSettings', { settings: { email: 'fit.habits96@gmail.com' } });
+    report = g.ctx.checkSetup();
+    expect(report).toContain('✅ Reports and alerts go to fit.habits96@gmail.com');
+    expect(g.call('status').result).toMatchObject({ sender: 'fit.habits96@gmail.com', senderProblem: null, emailsLeftToday: 100 });
+  });
+});

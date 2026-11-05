@@ -52,6 +52,8 @@ function createGas({ now = () => new Date() } = {}) {
   let fileSeq = 0;
   const ss = {
     getId: () => 'SHEET',
+    getName: () => 'Fit Habits Data',
+    getUrl: () => 'https://docs.google.com/spreadsheets/d/SHEET',
     getSheetByName: (n) => sheets.find((s) => s.name === n) || null,
     insertSheet: (n) => { const s = new Sheet(n); sheets.push(s); return s; },
     getSheets: () => sheets,
@@ -94,8 +96,9 @@ function createGas({ now = () => new Date() } = {}) {
         throw new Error('fmt ' + fmt);
       },
     },
-    Session: { getScriptTimeZone: () => 'America/New_York' },
-    MailApp: { sendEmail: (m) => mail.push(m) },
+    Session: { getScriptTimeZone: () => 'America/New_York', getEffectiveUser: () => ({ getEmail: () => ctx.__user }) },
+    __user: 'fit.habits96@gmail.com',
+    MailApp: { sendEmail: (m) => mail.push(m), getRemainingDailyQuota: () => 100 },
     UrlFetchApp: { fetch: (url, opts) => { fetches.push({ url, opts }); return { getResponseCode: () => 201, getContentText: () => '{}' }; } },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     ContentService: { createTextOutput: (t) => ({ t, setMimeType() { return this; }, getContent() { return this.t; } }), MimeType: { JSON: 'json' } },
