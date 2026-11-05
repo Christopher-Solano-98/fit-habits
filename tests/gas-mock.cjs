@@ -82,6 +82,7 @@ function createGas({ now = () => new Date() } = {}) {
     Utilities: {
       getUuid: () => require('crypto').randomUUID(),
       base64Encode: (b) => Buffer.from(typeof b === 'string' ? b : Uint8Array.from(b)).toString('base64'),
+      Charset: { UTF_8: 'UTF-8' },
       base64EncodeWebSafe: (s) => Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
       base64Decode: (s) => Array.from(Buffer.from(s, 'base64')),
       newBlob: (bytes, mime, name) => ({ bytes, mime, name }),

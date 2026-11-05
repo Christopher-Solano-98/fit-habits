@@ -121,6 +121,7 @@ export interface IntakeAnswers {
   emergencyPhone: string;
   signature: string; // typed full name
   signedAt: string;
+  waiverText?: string; // the exact wording they agreed to
 }
 
 export interface IntakeRequest {
@@ -144,6 +145,7 @@ export interface Settings {
   reports: { weekly: boolean; biweekly: boolean; monthly: boolean };
   scanReminderMonths: number;
   timezone: string; // IANA zone used by the scheduled jobs, e.g. America/New_York
+  waiverText: string; // shown on the client intake form and saved with each signature
 }
 
 export interface Snapshot {

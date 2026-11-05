@@ -1,4 +1,5 @@
 import type { Motivation, Settings, Template } from '@shared/types.ts';
+import { DEFAULT_WAIVER } from '@shared/waiver.ts';
 import { nowIso, uid } from './repo';
 
 export function defaultSettings(): Settings {
@@ -12,6 +13,7 @@ export function defaultSettings(): Settings {
     alerts: { missedPayments: true, graceDays: 2, emailTime: '18:00' },
     reports: { weekly: true, biweekly: true, monthly: true },
     scanReminderMonths: 4,
+    waiverText: DEFAULT_WAIVER,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
   };
 }

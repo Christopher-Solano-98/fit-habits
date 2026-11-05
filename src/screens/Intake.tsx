@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import type { IntakeAnswers } from '@shared/types.ts';
 import { PARQ_QUESTIONS, PARQ_SOURCE } from '@shared/parq.ts';
+import { DEFAULT_WAIVER, signedWaiverHtml } from '@shared/waiver.ts';
 import { localRepo } from '../data/local';
 import { fileToBase64, gasCall } from '../data/connection';
 import { Icon } from '../components/Icon';
@@ -10,7 +11,7 @@ import { Icon } from '../components/Icon';
 // data: in cloud mode it talks only to the `intake` Edge Function, which checks
 // the one-time token server-side.
 
-interface Info { firstName: string; business: string; completed: boolean }
+interface Info { firstName: string; business: string; completed: boolean; waiverText?: string }
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -24,7 +25,7 @@ async function loadInfo(token: string, api: string | null): Promise<Info | null>
   const snap = await localRepo().load();
   const req = snap.intakes.find((i) => i.token === token);
   const c = req && snap.clients.find((x) => x.id === req.clientId);
-  return req && c ? { firstName: c.firstName, business: snap.settings.businessName, completed: !!req.completedAt } : null;
+  return req && c ? { firstName: c.firstName, business: snap.settings.businessName, completed: !!req.completedAt, waiverText: snap.settings.waiverText } : null;
 }
 
 async function submit(token: string, answers: IntakeAnswers, id: File | null, api: string | null): Promise<void> {
@@ -46,6 +47,9 @@ async function submit(token: string, answers: IntakeAnswers, id: File | null, ap
   const req = snap.intakes.find((i) => i.token === token)!;
   const c = snap.clients.find((x) => x.id === req.clientId)!;
   if (id) await repo.uploadFile(c.id, 'id', id);
+  const name = `${c.firstName} ${c.lastName}`.trim();
+  const html = signedWaiverHtml({ business: snap.settings.businessName, clientName: name, waiverText: answers.waiverText ?? DEFAULT_WAIVER, answers });
+  await repo.uploadFile(c.id, 'waiver', new File([html], `Signed waiver - ${name} - ${answers.signedAt.slice(0, 10)}.html`, { type: 'text/html' }));
   await repo.put('intakes', { ...req, completedAt: new Date().toISOString(), answers });
   await repo.put('clients', { ...c, medicalCurrent: answers.medicalCurrent || c.medicalCurrent, medicalPast: answers.medicalPast || c.medicalPast, emergencyName: answers.emergencyName || c.emergencyName, emergencyPhone: answers.emergencyPhone || c.emergencyPhone });
 }
@@ -82,13 +86,15 @@ export function Intake() {
     );
   }
 
+  const waiverText = info.waiverText || DEFAULT_WAIVER;
+
   const go = async (e: FormEvent) => {
     e.preventDefault();
     if (parq.some((a) => a === null)) return setErr('Please answer every health question.');
     if (!agree || !f.signature.trim()) return setErr('Please read the waiver, check the box and type your full name to sign.');
     setErr(''); setBusy(true);
     try {
-      await submit(token!, { ...f, parq: parq as boolean[], signedAt: new Date().toISOString() }, idFile, api);
+      await submit(token!, { ...f, parq: parq as boolean[], signedAt: new Date().toISOString(), waiverText }, idFile, api);
       setSent(true);
     } catch (x) {
       setErr((x as Error).message);
@@ -144,8 +150,7 @@ export function Intake() {
 
       <fieldset>
         <legend>Waiver</legend>
-        {/* Placeholder: replace with the trainer's own waiver text before launch. */}
-        <p className="small waiver">I understand that physical training involves risk of injury. I confirm the health information above is true and complete, I will tell my trainer about any changes to my health, and I take part voluntarily and accept these risks.</p>
+        <div className="small waiver">{waiverText.split(/\n{2,}/).map((para, i) => <p key={i}>{para}</p>)}</div>
         <label className="check-row"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I have read and agree to the waiver</label>
         <label>Type your full name to sign<input {...field('signature')} autoComplete="name" /></label>
       </fieldset>

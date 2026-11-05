@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Settings as S } from '@shared/types.ts';
 import { useStore } from '../data/store';
+import { DEFAULT_WAIVER } from '@shared/waiver.ts';
 import { IS_SAMPLE } from '../lib/space';
 import { supabase } from '../data/supabase';
 import { parseConnectionCode, saveConnection } from '../data/connection';
@@ -32,6 +33,13 @@ export function Settings() {
         <label>Your email (reports and alerts)<input type="email" {...field('email')} /></label>
         <label>Your mobile (test messages)<input type="tel" {...field('phone')} /></label>
         <button className="btn btn-block" onClick={() => { saveSettings(s); toast('Saved'); }}>Save</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Your waiver</legend>
+        <p className="small">Clients read this on the intake form and sign it by typing their name. Each signed copy is saved to that client's Files → Waiver. Leave a blank line between paragraphs.</p>
+        <textarea rows={8} value={s.waiverText} onChange={(e) => setS({ ...s, waiverText: e.target.value })} />
+        <button className="btn btn-block" onClick={() => { saveSettings({ ...s, waiverText: s.waiverText.trim() || DEFAULT_WAIVER }); toast('Waiver saved'); }}>Save waiver</button>
       </fieldset>
 
       <fieldset>

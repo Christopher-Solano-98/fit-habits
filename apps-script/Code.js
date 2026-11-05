@@ -349,7 +349,7 @@ function intakeInfo_(token) {
   if (!r) throw new Error('This link is not valid. Ask your trainer for a new one.');
   var c = readTable_('clients').filter(function (x) { return x.id === r.clientId; })[0];
   var s = getSettings_() || {};
-  return { firstName: c ? c.firstName : '', business: s.businessName || 'Fit Habits', completed: !!r.completedAt };
+  return { firstName: c ? c.firstName : '', business: s.businessName || 'Fit Habits', completed: !!r.completedAt, waiverText: s.waiverText || FH.DEFAULT_WAIVER };
 }
 
 function clip_(v, n) { return typeof v === 'string' ? v.slice(0, n || 2000) : ''; }
@@ -362,6 +362,8 @@ function intakeSubmit_(req) {
   var parq = Array.isArray(a.parq) ? a.parq.map(Boolean).slice(0, FH.PARQ_QUESTIONS.length) : [];
   if (parq.length !== FH.PARQ_QUESTIONS.length || !clip_(a.signature, 200).trim()) throw new Error('Please answer every question and sign.');
   var answers = { parq: parq, medicalCurrent: clip_(a.medicalCurrent), medicalPast: clip_(a.medicalPast), emergencyName: clip_(a.emergencyName, 200), emergencyPhone: clip_(a.emergencyPhone, 50), signature: clip_(a.signature, 200), signedAt: new Date().toISOString() };
+  var settings = getSettings_() || {};
+  answers.waiverText = settings.waiverText || FH.DEFAULT_WAIVER;
   if (req.id && req.id.data) {
     if (!/^image\//.test(req.id.mime || '') || req.id.data.length > 14e6) throw new Error('ID photo must be an image under 10 MB');
     saveBlob_(r.clientId, 'id', 'Photo ID', req.id.mime, req.id.data);
@@ -370,6 +372,10 @@ function intakeSubmit_(req) {
   r.answers = answers;
   put_('intakes', r);
   var c = readTable_('clients').filter(function (x) { return x.id === r.clientId; })[0];
+  // The signed waiver is built here from the trainer's own wording, not taken from the browser.
+  var clientName = c ? (c.firstName + ' ' + c.lastName).trim() : answers.signature;
+  var html = FH.signedWaiverHtml({ business: settings.businessName || 'Fit Habits', clientName: clientName, waiverText: answers.waiverText, answers: answers });
+  saveBlob_(r.clientId, 'waiver', 'Signed waiver - ' + clientName + ' - ' + answers.signedAt.slice(0, 10) + '.html', 'text/html', Utilities.base64Encode(html, Utilities.Charset.UTF_8));
   if (c) {
     ['medicalCurrent', 'medicalPast', 'emergencyName', 'emergencyPhone'].forEach(function (k) { if (answers[k]) c[k] = answers[k]; });
     put_('clients', c);
