@@ -1,0 +1,8 @@
+# Minimal project config for `supabase functions deploy`.
+# The intake form and the hourly cron call these without a user session, so
+# JWT verification is off for them; each checks its own token/secret instead.
+[functions.intake]
+verify_jwt = false
+
+[functions.cron]
+verify_jwt = false
