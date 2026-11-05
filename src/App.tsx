@@ -5,6 +5,8 @@ import { StoreProvider } from './data/store';
 import { localRepo } from './data/local';
 import { cloudRepo } from './data/cloud';
 import { supabase } from './data/supabase';
+import { gasRepo } from './data/gas';
+import { getConnection } from './data/connection';
 import { TabBar, Toast } from './components/ui';
 import { Home } from './screens/Home';
 import { Clients } from './screens/Clients';
@@ -25,17 +27,19 @@ function ScrollTop() {
 }
 
 function TrainerApp() {
-  const [session, setSession] = useState<Session | null | undefined>(supabase ? undefined : null);
+  const conn = useMemo(getConnection, []);
+  const useSupabase = !conn && !!supabase;
+  const [session, setSession] = useState<Session | null | undefined>(useSupabase ? undefined : null);
   useEffect(() => {
-    if (!supabase) return;
+    if (!useSupabase || !supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => data.subscription.unsubscribe();
-  }, []);
-  const repo = useMemo(() => (supabase ? cloudRepo(supabase) : localRepo()), []);
+  }, [useSupabase]);
+  const repo = useMemo(() => (conn ? gasRepo(conn) : supabase ? cloudRepo(supabase) : localRepo()), [conn]);
 
-  if (supabase && session === undefined) return <div className="center-screen"><p className="muted">Loading…</p></div>;
-  if (supabase && !session) return <Login />;
+  if (useSupabase && session === undefined) return <div className="center-screen"><p className="muted">Loading…</p></div>;
+  if (useSupabase && !session) return <Login />;
 
   return (
     <StoreProvider repo={repo} key={session?.user.id ?? 'demo'}>

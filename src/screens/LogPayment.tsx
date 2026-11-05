@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Channel, Payment, PayMethod } from '@shared/types.ts';
+import type { Sent } from '../data/repo';
 import { fmtLong } from '@shared/dates.ts';
 import { mailtoHref, receiptText, smsHref } from '@shared/messages.ts';
 import { useStore } from '../data/store';
@@ -19,7 +20,7 @@ export function LogPayment() {
   const [paidOn, setPaidOn] = useState(today);
   const [method, setMethod] = useState<PayMethod>('cash');
   const [note, setNote] = useState('');
-  const [done, setDone] = useState<{ p: Payment; auto: boolean } | null>(null);
+  const [done, setDone] = useState<{ p: Payment; sent: Sent } | null>(null);
 
   const pickClient = (id: string) => {
     setCid(id);
@@ -33,11 +34,11 @@ export function LogPayment() {
     if (!c || !(n > 0)) return toast('Pick a client and enter an amount');
     const p: Payment = { id: uid(), clientId: c.id, amount: n, paidOn, method, note: note || null, receiptVia: c.channel, createdAt: nowIso() };
     await save('payments', p);
-    let auto = false;
+    let sent: Sent = { text: false, email: false };
     if (c.channel !== 'none') {
-      auto = await repo.sendNotice({ clientId: c.id, channel: c.channel, subject: `${snap.settings.businessName} receipt`, body: receiptText(c, p, snap.settings) });
+      sent = await repo.sendNotice({ clientId: c.id, channel: c.channel, subject: `${snap.settings.businessName} receipt`, body: receiptText(c, p, snap.settings) });
     }
-    setDone({ p, auto });
+    setDone({ p, sent });
   };
 
   if (!clients.length) {
@@ -47,21 +48,27 @@ export function LogPayment() {
   if (done && c) {
     const text = receiptText(c, done.p, snap.settings);
     const via: Channel = c.channel;
+    const wantText = via === 'text' || via === 'both';
+    const wantEmail = via === 'email' || via === 'both';
+    const needText = wantText && !done.sent.text && !!c.phone;
+    const needEmail = wantEmail && !done.sent.email && !!c.email;
+    const sentWords = [done.sent.text && 'text', done.sent.email && 'email'].filter(Boolean).join(' and ');
     return (
       <div className="page done">
         <span className="done-check"><Icon name="check" size={38} stroke={2.6} /></span>
         <h1 className="display">Payment logged</h1>
         <p>{money(done.p.amount)} from {c.firstName} {c.lastName} · {fmtLong(done.p.paidOn)}</p>
         <div className="card pad receipt">
-          <span className="small upper">{via === 'none' ? 'Receipt (not sent: client opted out)' : done.auto ? `Receipt sent automatically by ${via === 'both' ? 'text and email' : via}` : 'Send the receipt'}</span>
+          <span className="small upper">{via === 'none' ? 'Receipt (not sent: client opted out)' : sentWords ? `Receipt sent automatically by ${sentWords}` : 'Send the receipt'}</span>
           <div className="bubble">{text}</div>
-          {!done.auto && via !== 'none' && (
+          {(needText || needEmail) && (
             <div className="grid2">
-              {c.phone && via !== 'email' && <a className="btn" href={smsHref(c.phone, text)}>Text receipt</a>}
-              {c.email && via !== 'text' && <a className="btn btn-dark" href={mailtoHref(c.email, `${snap.settings.businessName} receipt`, text)}>Email receipt</a>}
+              {needText && <a className="btn" href={smsHref(c.phone!, text)}>Text receipt</a>}
+              {needEmail && <a className="btn btn-dark" href={mailtoHref(c.email!, `${snap.settings.businessName} receipt`, text)}>Email receipt</a>}
             </div>
           )}
-          {!done.auto && via !== 'none' && repo.mode === 'demo' && <span className="small">Once texting and email are set up, receipts send on their own.</span>}
+          {wantText && !done.sent.text && repo.mode !== 'demo' && <span className="small">Automatic texts turn on once Twilio is set up. Until then, tap Text receipt.</span>}
+          {repo.mode === 'demo' && via !== 'none' && <span className="small">Demo mode: once your Google Sheet is connected, email receipts send on their own.</span>}
         </div>
         <div className="grid2">
           <button className="btn btn-outline" onClick={() => { setDone(null); setNote(''); }}>Log another</button>

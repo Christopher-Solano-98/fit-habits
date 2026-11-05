@@ -95,7 +95,7 @@ export function localRepo(): Repo {
       mutate((s) => { s.files = s.files.filter((x) => x.id !== f.id); });
     },
     async sendNotice() {
-      return false;
+      return { text: false, email: false };
     },
     async reset(withSamples) {
       await blobOp('readwrite', (s) => s.clear());

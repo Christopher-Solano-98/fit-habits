@@ -52,7 +52,7 @@ export function Seg<T extends string>({ value, options, onChange, dark }: { valu
   return (
     <div className={`seg${dark ? ' seg-dark' : ''}`} role="group">
       {options.map(([v, label]) => (
-        <button key={v} aria-pressed={v === value} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{label}</button>
+        <button type="button" key={v} aria-pressed={v === value} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{label}</button>
       ))}
     </div>
   );
@@ -60,7 +60,7 @@ export function Seg<T extends string>({ value, options, onChange, dark }: { valu
 
 export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <button className={`toggle${on ? ' on' : ''}`} aria-pressed={on} aria-label={label} onClick={() => onChange(!on)}>
+    <button type="button" className={`toggle${on ? ' on' : ''}`} aria-pressed={on} aria-label={label} onClick={() => onChange(!on)}>
       <span />
     </button>
   );

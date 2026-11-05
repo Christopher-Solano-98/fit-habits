@@ -2,11 +2,23 @@ import { useState } from 'react';
 import type { Settings as S } from '@shared/types.ts';
 import { useStore } from '../data/store';
 import { supabase } from '../data/supabase';
+import { parseConnectionCode, saveConnection } from '../data/connection';
 import { Header } from '../components/ui';
 
 export function Settings() {
   const { snap, saveSettings, repo, reload, toast } = useStore();
   const [s, setS] = useState<S>(snap.settings);
+  const [code, setCode] = useState('');
+  const [codeErr, setCodeErr] = useState('');
+  const connect = () => {
+    try {
+      saveConnection(parseConnectionCode(code));
+      location.hash = '#/';
+      location.reload();
+    } catch (e) {
+      setCodeErr((e as Error).message);
+    }
+  };
   const field = (k: 'trainerName' | 'businessName' | 'email' | 'phone') => ({ value: s[k], onChange: (e: { target: { value: string } }) => setS({ ...s, [k]: e.target.value }) });
 
   return (
@@ -31,11 +43,19 @@ export function Settings() {
         <legend>Data</legend>
         {repo.mode === 'demo' ? (
           <>
-            <p className="small">Demo mode: everything is saved on this device only. Connect Supabase to sync, back up and send texts and emails automatically.</p>
+            <p className="small">Demo mode: everything is saved on this device only, with sample clients. Connect your Google Sheet to use real data.</p>
+            <label>Connection code (from Apps Script)<textarea rows={3} value={code} onChange={(e) => { setCode(e.target.value); setCodeErr(''); }} placeholder="Paste the code here" /></label>
+            {codeErr && <p className="warn-text small">{codeErr}</p>}
+            <button className="btn btn-block" disabled={!code.trim()} onClick={connect}>Connect Google Sheet</button>
             <div className="grid2">
               <button className="btn btn-outline" onClick={async () => { if (confirm('Replace everything with sample clients?')) { await repo.reset(true); await reload(); toast('Sample data loaded'); } }}>Load sample data</button>
               <button className="btn btn-outline danger" onClick={async () => { if (confirm('Erase all data on this device and start fresh?')) { await repo.reset(false); await reload(); toast('Started fresh'); } }}>Start fresh</button>
             </div>
+          </>
+        ) : repo.mode === 'sheets' ? (
+          <>
+            <p className="small">Connected to your Google Sheet. Records live in the Sheet, files in a private Google Drive folder, and emails go out from your Gmail.</p>
+            <button className="btn btn-outline btn-block" onClick={() => { if (confirm('Disconnect this phone from your Google Sheet? Your data stays in the Sheet; you can reconnect with your code.')) { saveConnection(null); location.reload(); } }}>Disconnect this phone</button>
           </>
         ) : (
           <>

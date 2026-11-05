@@ -9,8 +9,10 @@ export interface NoticeRequest {
   body: string;
 }
 
+export interface Sent { text: boolean; email: boolean }
+
 export interface Repo {
-  mode: 'demo' | 'cloud';
+  mode: 'demo' | 'cloud' | 'sheets';
   load(): Promise<Snapshot>;
   put<T extends TableName>(table: T, row: Row<T>): Promise<void>;
   remove(table: TableName, id: string): Promise<void>;
@@ -18,8 +20,8 @@ export interface Repo {
   uploadFile(clientId: string, kind: FileKind, file: File): Promise<ClientFile>;
   fileUrl(f: ClientFile): Promise<string>;
   deleteFile(f: ClientFile): Promise<void>;
-  /** Sends a text/email from the server. Returns false when sending isn't set up. */
-  sendNotice(n: NoticeRequest): Promise<boolean>;
+  /** Sends a text/email from the server; reports which ones actually went out. */
+  sendNotice(n: NoticeRequest): Promise<Sent>;
   reset(withSamples: boolean): Promise<void>;
 }
 

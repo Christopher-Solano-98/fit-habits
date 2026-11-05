@@ -76,8 +76,8 @@ export function cloudRepo(sb: SupabaseClient): Repo {
     },
     async sendNotice(n) {
       const { data, error } = await sb.functions.invoke('notify', { body: n });
-      if (error) return false;
-      return Boolean((data as { sent?: boolean } | null)?.sent);
+      const d = (error ? null : data) as { text?: boolean; email?: boolean } | null;
+      return { text: !!d?.text, email: !!d?.email };
     },
     async reset() {
       throw new Error('Reset is only available in demo mode');

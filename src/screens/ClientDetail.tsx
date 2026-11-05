@@ -6,6 +6,7 @@ import { change, fmtValue, goalProgress, metric, METRICS, parseValue, series } f
 import { scheduleText, smsHref, telHref } from '@shared/messages.ts';
 import { PARQ_QUESTIONS } from '@shared/parq.ts';
 import { useStore } from '../data/store';
+import { getConnection } from '../data/connection';
 import { nowIso, uid } from '../data/repo';
 import { Avatar, Empty, Header, Pill, QuickText, Seg } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -282,7 +283,8 @@ function FilesTab({ c }: { c: Client }) {
   const sendIntake = async () => {
     const token = uid().replace(/-/g, '');
     await save('intakes', { id: uid(), clientId: c.id, token, createdAt: nowIso(), completedAt: null, answers: null });
-    const link = `${location.origin}${location.pathname}#/intake/${token}`;
+    const conn = getConnection();
+    const link = `${location.origin}${location.pathname}#/intake/${token}${conn ? `?api=${encodeURIComponent(conn.api)}` : ''}`;
     const body = `Hi ${c.firstName}, please fill out your ${snap.settings.businessName} intake form before our next session (health questions, medical history, ID and waiver). It takes about 5 minutes: ${link}`;
     if (c.phone) location.href = smsHref(c.phone, body);
     else { await navigator.clipboard?.writeText(link); toast('Link copied. Add a phone number to text it.'); }
@@ -332,7 +334,7 @@ function FilesTab({ c }: { c: Client }) {
           );
         })}
       </div>
-      <p className="small">{repo.mode === 'cloud' ? 'Files are stored encrypted in a private bucket. Only you can open them, through links that expire after 2 minutes.' : 'Demo mode: files stay on this device only.'}</p>
+      <p className="small">{repo.mode === 'sheets' ? 'Files are saved in a private folder in your Google Drive. Only you can open them.' : repo.mode === 'cloud' ? 'Files are stored encrypted in a private bucket. Only you can open them, through links that expire after 2 minutes.' : 'Demo mode: files stay on this device only.'}</p>
     </div>
   );
 }

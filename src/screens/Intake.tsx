@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import type { IntakeAnswers } from '@shared/types.ts';
 import { PARQ_QUESTIONS, PARQ_SOURCE } from '@shared/parq.ts';
 import { localRepo } from '../data/local';
+import { fileToBase64, gasCall } from '../data/connection';
 import { Icon } from '../components/Icon';
 
 // Public page a client opens from the texted link. It never sees the trainer's
@@ -14,7 +15,8 @@ interface Info { firstName: string; business: string; completed: boolean }
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-async function loadInfo(token: string): Promise<Info | null> {
+async function loadInfo(token: string, api: string | null): Promise<Info | null> {
+  if (api) return gasCall<Info>(api, { action: 'intakeInfo', token });
   if (url && anon) {
     const res = await fetch(`${url}/functions/v1/intake?token=${encodeURIComponent(token)}`, { headers: { apikey: anon, Authorization: `Bearer ${anon}` } });
     return res.ok ? res.json() : null;
@@ -25,7 +27,11 @@ async function loadInfo(token: string): Promise<Info | null> {
   return req && c ? { firstName: c.firstName, business: snap.settings.businessName, completed: !!req.completedAt } : null;
 }
 
-async function submit(token: string, answers: IntakeAnswers, id: File | null): Promise<void> {
+async function submit(token: string, answers: IntakeAnswers, id: File | null, api: string | null): Promise<void> {
+  if (api) {
+    await gasCall(api, { action: 'intakeSubmit', token, answers, id: id ? await fileToBase64(id) : null });
+    return;
+  }
   if (url && anon) {
     const body = new FormData();
     body.set('token', token);
@@ -46,6 +52,9 @@ async function submit(token: string, answers: IntakeAnswers, id: File | null): P
 
 export function Intake() {
   const { token } = useParams();
+  const [params] = useSearchParams();
+  const apiParam = params.get('api');
+  const api = apiParam && apiParam.startsWith('https://script.google.com/') ? apiParam : null;
   const [info, setInfo] = useState<Info | null | undefined>(undefined);
   const [parq, setParq] = useState<(boolean | null)[]>(PARQ_QUESTIONS.map(() => null));
   const [f, setF] = useState({ medicalCurrent: '', medicalPast: '', emergencyName: '', emergencyPhone: '', signature: '' });
@@ -56,7 +65,7 @@ export function Intake() {
   const [sent, setSent] = useState(false);
   const idInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { loadInfo(token!).then(setInfo).catch(() => setInfo(null)); }, [token]);
+  useEffect(() => { loadInfo(token!, api).then(setInfo).catch(() => setInfo(null)); }, [token, api]);
 
   if (info === undefined) return <div className="center-screen"><p className="muted">Loading…</p></div>;
   if (!info) return <div className="center-screen"><p><strong>This link isn't valid.</strong></p><p className="muted">Ask your trainer to send a new one.</p></div>;
@@ -76,7 +85,7 @@ export function Intake() {
     if (!agree || !f.signature.trim()) return setErr('Please read the waiver, check the box and type your full name to sign.');
     setErr(''); setBusy(true);
     try {
-      await submit(token!, { ...f, parq: parq as boolean[], signedAt: new Date().toISOString() }, idFile);
+      await submit(token!, { ...f, parq: parq as boolean[], signedAt: new Date().toISOString() }, idFile, api);
       setSent(true);
     } catch (x) {
       setErr((x as Error).message);

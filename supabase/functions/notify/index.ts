@@ -28,19 +28,19 @@ Deno.serve(async (req) => {
   const today = localNow(s?.timezone ?? 'America/New_York').date;
 
   const db = admin();
-  let sent = false;
+  let text = false, email = false;
   const log = (ch: 'text' | 'email', to: string, r: { ok: boolean; error?: string }) =>
     db.from('notices').insert({ owner_id: auth.user!.id, client_id: c.id, kind: 'receipt', channel: ch, to_address: to, body, status: r.ok ? 'sent' : 'failed', error: r.error ?? null, local_date: today });
 
   if ((channel === 'text' || channel === 'both') && c.phone) {
     const r = await sendSms(c.phone, body);
     await log('text', c.phone, r);
-    sent ||= r.ok;
+    text = r.ok;
   }
   if ((channel === 'email' || channel === 'both') && c.email) {
     const r = await sendEmail(c.email, subject || `${s?.businessName ?? 'Fit Habits'}`, body, s?.email || undefined);
     await log('email', c.email, r);
-    sent ||= r.ok;
+    email = r.ok;
   }
-  return json({ sent });
+  return json({ text, email });
 });
