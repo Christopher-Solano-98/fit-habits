@@ -18,24 +18,29 @@ export function Avatar({ c, size = 44 }: { c: Client; size?: number }) {
 
 export function Header({ title, sub, back, action, help }: { title: string; sub?: ReactNode; back?: boolean; action?: ReactNode; help?: string }) {
   const nav = useNavigate();
+  const backBtn = back && (
+    <button className="back" onClick={() => (history.length > 1 ? nav(-1) : nav('/'))}>
+      <Icon name="back" /> Back
+    </button>
+  );
+  const actions = (action || help) && (
+    <div className="header-actions">
+      {help && <HelpButton topic={help} />}
+      {action}
+    </div>
+  );
+  if (back && !title && !sub) {
+    return <header className="header"><div className="header-row">{backBtn}{actions}</div></header>;
+  }
   return (
     <header className="header">
-      {back && (
-        <button className="back" onClick={() => (history.length > 1 ? nav(-1) : nav('/'))}>
-          <Icon name="back" /> Back
-        </button>
-      )}
+      {backBtn}
       <div className="header-row">
         <div className="header-text">
           {title && <h1>{title}</h1>}
           {sub && <div className="sub">{sub}</div>}
         </div>
-        {(action || help) && (
-          <div className="header-actions">
-            {help && <HelpButton topic={help} />}
-            {action}
-          </div>
-        )}
+        {actions}
       </div>
     </header>
   );
@@ -59,7 +64,7 @@ export function Section({ title, children, action }: { title: string; children: 
 
 export function Seg<T extends string>({ value, options, onChange, dark }: { value: T; options: [T, string][]; onChange: (v: T) => void; dark?: boolean }) {
   return (
-    <div className={`seg${dark ? ' seg-dark' : ''}`} role="group">
+    <div className={`seg${dark ? ' seg-dark' : ''}${options.length >= 5 ? ' seg-tight' : ''}`} role="group" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
       {options.map(([v, label]) => (
         <button type="button" key={v} aria-pressed={v === value} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{label}</button>
       ))}

@@ -125,9 +125,9 @@ export const HELP: HelpSection[] = [
         id: 'intake',
         q: 'How does a new client fill out the PAR-Q and waiver?',
         steps: [
-          'Open the client → **Files** → **Intake packet** → **Send**.',
+          'Open the client → **Files** → **Intake packet** → **Text to [client]**.',
           'They get a text with a link. On their phone they answer the 7 health questions, add medical history and an emergency contact, take a photo of their ID and sign the waiver by typing their name.',
-          'If they’re with you, tap **Fill out on this phone** and hand them your phone instead.',
+          'If they’re with you, tap **Fill out here** and hand them your phone instead.',
         ],
       },
       {

@@ -335,7 +335,7 @@ function FilesTab({ c }: { c: Client }) {
 
   return (
     <div className="stack">
-      <div className="card pad">
+      <div className="card pad intake-card">
         <div className="row-plain">
           <span className="grow">
             <strong>Intake packet</strong>
@@ -343,10 +343,13 @@ function FilesTab({ c }: { c: Client }) {
               {!intake ? 'Not sent yet' : intake.completedAt ? `Completed ${fmtLong(intake.completedAt.slice(0, 10))}` : `Sent ${fmtShort(intake.createdAt.slice(0, 10))}, waiting on ${c.firstName}`}
             </span>
           </span>
-          <button className="btn-sm" onClick={sendIntake}>{intake ? 'Resend' : 'Send'}</button>
+          {intake?.completedAt && <button className="btn-sm btn-outline" onClick={sendIntake}>Resend</button>}
         </div>
         {!intake?.completedAt && (
-          <button className="btn btn-outline btn-block intake-here" onClick={fillHere}>Fill out on this phone</button>
+          <div className="grid2">
+            <button className="btn" onClick={sendIntake}><Icon name="chat" size={16} /> {intake ? 'Resend link' : `Text to ${c.firstName}`}</button>
+            <button className="btn btn-outline" onClick={fillHere}>Fill out here</button>
+          </div>
         )}
         {intake?.answers && (
           <div className="parq">
