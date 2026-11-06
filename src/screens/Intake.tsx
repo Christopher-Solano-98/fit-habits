@@ -143,10 +143,11 @@ export function Intake() {
 
       <fieldset>
         <legend>Photo ID</legend>
-        <input ref={idInput} type="file" hidden accept="image/*" capture="environment" onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
+        <input ref={idInput} type="file" hidden accept="image/*" onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
         <button type="button" className="btn btn-outline btn-block" onClick={() => idInput.current?.click()}>
-          <Icon name="upload" size={16} /> {idFile ? idFile.name : 'Take or upload a photo of your ID'}
+          <Icon name="upload" size={16} /> {idFile ? `Added: ${idFile.name}` : 'Add a photo of your ID'}
         </button>
+        <p className="small">Take a new photo or choose one already on your phone.</p>
       </fieldset>
 
       <fieldset>
