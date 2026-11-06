@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import type { Client, ClientFile, FileKind, Goal, MetricKey } from '@shared/types.ts';
+import type { Client, ClientFile, FileKind, Goal, IntakeAnswers, MetricKey } from '@shared/types.ts';
 import { addMonths, ageOn, fmtLong, fmtShort } from '@shared/dates.ts';
 import { change, changeWith, fmtValue, fmtWith, goalProgress, isMetric, metric, METRICS, parseWith, series, type TrackDef } from '@shared/metrics.ts';
 import { exerciseDef, exerciseSeries, fmtLog, trackDef, trackedExercises, trackSeries } from '@shared/exercises.ts';
@@ -277,6 +277,9 @@ function FilesTab({ c }: { c: Client }) {
   const [busy, setBusy] = useState(false);
   const files = snap.files.filter((f) => f.clientId === c.id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   const intake = snap.intakes.filter((i) => i.clientId === c.id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
+  // The most recent submitted intake: its PAR-Q and medical answers show under those rows.
+  const answered = snap.intakes.filter((i) => i.clientId === c.id && i.answers).sort((a, b) => ((a.completedAt ?? '') < (b.completedAt ?? '') ? 1 : -1))[0];
+  const [viewing, setViewing] = useState<'parq' | 'medical' | null>(null);
 
   const pick = (k: FileKind) => { setKind(k); input.current?.click(); };
   const upload = async (list: FileList | null) => {
@@ -387,13 +390,35 @@ function FilesTab({ c }: { c: Client }) {
       <div className="card">
         {FILE_KINDS.map(([k, label]) => {
           const mine = files.filter((f) => f.kind === k);
+          const fromIntake = answered?.answers && (k === 'parq' || k === 'medical') ? answered : null;
+          const count = mine.length + (fromIntake ? 1 : 0);
           return (
             <div key={k}>
               <div className="row">
                 <span className="file-icon"><Icon name="file" size={18} /></span>
-                <span className="grow"><strong>{label}</strong><span className="small">{mine.length ? `${mine.length} file${mine.length > 1 ? 's' : ''}` : 'Nothing uploaded'}</span></span>
+                <span className="grow"><strong>{label}</strong><span className="small">{count ? (fromIntake && !mine.length ? 'From the intake form' : `${count} item${count > 1 ? 's' : ''}`) : 'Nothing uploaded'}</span></span>
                 <button className="btn-sm btn-outline" disabled={busy} onClick={() => pick(k)}><Icon name="upload" size={14} /> Add</button>
               </div>
+              {fromIntake && (
+                <div className="row sub-row">
+                  <button className="row-main" onClick={() => setViewing(k as 'parq' | 'medical')}>
+                    {k === 'parq' ? (
+                      <>
+                        <span>PAR-Q answers</span>
+                        <span className={`small${fromIntake.answers!.parq.some(Boolean) ? ' warn-text' : ''}`}>
+                          {fmtShort(fromIntake.completedAt!.slice(0, 10))} · {fromIntake.answers!.parq.some(Boolean) ? `${fromIntake.answers!.parq.filter(Boolean).length} "Yes" answer${fromIntake.answers!.parq.filter(Boolean).length > 1 ? 's' : ''}` : 'All "No"'}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Medical history</span>
+                        <span className="small clamp2">{fmtShort(fromIntake.completedAt!.slice(0, 10))} · {[fromIntake.answers!.medicalCurrent && `Current: ${fromIntake.answers!.medicalCurrent}`, fromIntake.answers!.medicalPast && `Past: ${fromIntake.answers!.medicalPast}`].filter(Boolean).join(' · ') || 'Nothing reported'}</span>
+                      </>
+                    )}
+                  </button>
+                  <Icon name="chevron" size={16} />
+                </div>
+              )}
               {mine.map((f) => (
                 <div className="row sub-row" key={f.id}>
                   <button className="row-main" onClick={() => open(f)}><span>{f.name}</span><span className="small">{fmtShort(f.createdAt.slice(0, 10))} · {Math.max(1, Math.round(f.size / 1024))} KB</span></button>
@@ -404,7 +429,47 @@ function FilesTab({ c }: { c: Client }) {
           );
         })}
       </div>
+      {viewing && answered?.answers && <IntakeAnswersSheet c={c} answers={answered.answers} completedAt={answered.completedAt!} focus={viewing} onClose={() => setViewing(null)} />}
       <p className="small">{repo.mode === 'sheets' ? 'Files are saved in a private folder in your Google Drive. Only you can open them.' : repo.mode === 'cloud' ? 'Files are stored encrypted in a private bucket. Only you can open them, through links that expire after 2 minutes.' : 'Demo mode: files stay on this device only.'}</p>
+    </div>
+  );
+}
+
+/** What the client submitted on the intake form: PAR-Q answers, medical history, emergency contact, signature. */
+function IntakeAnswersSheet({ c, answers, completedAt, focus, onClose }: { c: Client; answers: IntakeAnswers; completedAt: string; focus: 'parq' | 'medical'; onClose: () => void }) {
+  const yes = answers.parq.filter(Boolean).length;
+  const parq = (
+    <section className="stack-sm">
+      <strong>PAR-Q health questions</strong>
+      {yes > 0 ? <p className="warn-text small"><Icon name="alert" size={14} /> {yes} "Yes" answer{yes > 1 ? 's' : ''}. Get the PAR-Q+ follow-up pages or a doctor's clearance before training hard.</p> : <p className="ok small"><Icon name="check" size={14} /> All answers "No"</p>}
+      <div className="card">
+        {PARQ_QUESTIONS.map((q, i) => (
+          <div className="row parq-row" key={i}>
+            <span className="grow small">{i + 1}. {q}</span>
+            <strong className={answers.parq[i] ? 'warn-text' : ''}>{answers.parq[i] ? 'Yes' : 'No'}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+  const medical = (
+    <section className="stack-sm">
+      <strong>Medical history</strong>
+      <div className="card">
+        <div className="kv"><span>Current</span><span>{answers.medicalCurrent || 'None reported'}</span></div>
+        <div className="kv"><span>Past</span><span>{answers.medicalPast || 'None reported'}</span></div>
+        <div className="kv"><span>Emergency</span><span>{answers.emergencyName ? `${answers.emergencyName}${answers.emergencyPhone ? ' · ' + answers.emergencyPhone : ''}` : 'None given'}</span></div>
+      </div>
+    </section>
+  );
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet sheet-tall" role="dialog" aria-label="Intake answers" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head"><strong>{c.firstName}'s intake</strong><span className="small">{fmtLong(completedAt.slice(0, 10))}</span></div>
+        {focus === 'parq' ? <>{parq}{medical}</> : <>{medical}{parq}</>}
+        <p className="small">Signed by {answers.signature} on {fmtLong(answers.signedAt.slice(0, 10))}. The full signed copy is under Waiver.</p>
+        <button className="btn btn-block" onClick={onClose}>Done</button>
+      </div>
     </div>
   );
 }

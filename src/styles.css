@@ -349,3 +349,7 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 .seg { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
 /* Keep logos at their natural shape inside stretched flex columns. */
 .brand-logo { align-self: flex-start; width: auto; max-width: 100%; object-fit: contain; }
+
+.clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.parq-row { align-items: flex-start; }
+.parq-row strong { flex: none; padding-left: 8px; }
