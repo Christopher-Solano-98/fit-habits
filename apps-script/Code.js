@@ -386,8 +386,9 @@ function intakeSubmit_(req) {
   var settings = getSettings_() || {};
   answers.waiverText = settings.waiverText || FH.DEFAULT_WAIVER;
   if (req.id && req.id.data) {
-    if (!/^image\//.test(req.id.mime || '') || req.id.data.length > 14e6) throw new Error('ID photo must be an image under 10 MB');
-    saveBlob_(r.clientId, 'id', 'Photo ID', req.id.mime, req.id.data);
+    var idMime = req.id.mime || '';
+    if (!(/^image\//.test(idMime) || idMime === 'application/pdf') || req.id.data.length > 14e6) throw new Error('Your ID must be a photo or PDF under 10 MB');
+    saveBlob_(r.clientId, 'id', idMime === 'application/pdf' ? 'Photo ID.pdf' : 'Photo ID', idMime, req.id.data);
   }
   r.completedAt = new Date().toISOString();
   r.answers = answers;

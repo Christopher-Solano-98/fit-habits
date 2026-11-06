@@ -97,10 +97,14 @@ describe('Apps Script backend', () => {
     expect(g.post({ action: 'intakeSubmit', token, answers: { ...answers, parq: [false] } }).error).toMatch(/every question/);
     expect(g.post({ action: 'intakeSubmit', token, answers, id: { mime: 'image/jpeg', data: 'aGk=' } }).result).toBe(true);
     expect(g.post({ action: 'intakeSubmit', token, answers }).error).toMatch(/Already/);
+    // a PDF of an ID is accepted too; other types are not
+    g.call('put', { table: 'intakes', row: { id: 'i2', clientId: 'c1', token: 'd'.repeat(32), createdAt: new Date().toISOString(), completedAt: null, answers: null } });
+    expect(g.post({ action: 'intakeSubmit', token: 'd'.repeat(32), answers, id: { mime: 'text/plain', data: 'aGk=' } }).error).toMatch(/photo or PDF/);
+    expect(g.post({ action: 'intakeSubmit', token: 'd'.repeat(32), answers, id: { mime: 'application/pdf', data: 'aGk=' } }).result).toBe(true);
     const r = g.call('load').result;
     expect(r.intakes[0].answers.parq[4]).toBe(true);
     expect(r.clients[0]).toMatchObject({ medicalCurrent: 'Inhaler', emergencyName: 'Ana' });
-    expect(r.files.map((f: { kind: string }) => f.kind).sort()).toEqual(['id', 'waiver']);
+    expect(r.files.map((f: { kind: string }) => f.kind).sort()).toEqual(['id', 'id', 'waiver', 'waiver']); // photo intake + PDF intake
     const waiver = r.files.find((f: { kind: string }) => f.kind === 'waiver');
     expect(waiver.name).toMatch(/^Signed waiver - Marcus Reed - \d{4}-\d{2}-\d{2}\.html$/);
     const html = Buffer.from(g.call('file', { id: waiver.id }).result.data, 'base64').toString();

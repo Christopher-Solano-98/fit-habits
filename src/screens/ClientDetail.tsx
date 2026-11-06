@@ -383,7 +383,7 @@ function FilesTab({ c }: { c: Client }) {
         )}
       </div>
 
-      <input ref={input} type="file" hidden accept="image/*,application/pdf" multiple onChange={(e) => upload(e.target.files)} />
+      <input ref={input} type="file" hidden multiple onChange={(e) => upload(e.target.files)} />
       <div className="card">
         {FILE_KINDS.map(([k, label]) => {
           const mine = files.filter((f) => f.kind === k);
