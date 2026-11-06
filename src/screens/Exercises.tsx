@@ -20,7 +20,7 @@ export function ExercisePicker() {
   const tracking = new Set(snap.exerciseLogs.filter((l) => l.clientId === c.id).map((l) => l.exerciseId));
   return (
     <div className="page">
-      <Header title="Add exercise" sub={`for ${c.firstName} ${c.lastName}`} back />
+      <Header title="Add exercise" sub={`for ${c.firstName} ${c.lastName}`} back help="custom-exercise" />
       <ExerciseLibrary marked={tracking} markLabel="Tracking" onPick={(e) => nav(`/clients/${c.id}/exercise/${e.id}`, { replace: true })} />
     </div>
   );
@@ -137,7 +137,7 @@ export function ExerciseDetail() {
 
   return (
     <div className="page">
-      <Header title={e.name} sub={<>{c.firstName} {c.lastName} · {e.group} · {kind.label}</>} back />
+      <Header title={e.name} sub={<>{c.firstName} {c.lastName} · {e.group} · {kind.label}</>} back help="exercises" />
 
       <form className="card pad form-inline form" onSubmit={submit}>
         <strong>Log {fmtShort(date) === fmtShort(today) ? "today's" : fmtShort(date)} numbers</strong>

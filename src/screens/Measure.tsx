@@ -42,7 +42,7 @@ export function Measure() {
 
   return (
     <form className="page form" onSubmit={submit}>
-      <Header title={existing ? 'Edit measurements' : 'New measurements'} sub={`${c.firstName} ${c.lastName}`} back />
+      <Header title={existing ? 'Edit measurements' : 'New measurements'} sub={`${c.firstName} ${c.lastName}`} back help="measurements" />
       <label>Date<input type="date" value={date} onChange={(e) => setDate(e.target.value || today)} /></label>
       <p className="small">Fill in only what you measured. Leave the rest blank.</p>
       {METRIC_GROUPS.map((g) => (

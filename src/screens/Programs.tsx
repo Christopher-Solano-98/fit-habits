@@ -201,7 +201,7 @@ function ProgramEditorFor({ pid }: { pid: string }) {
 
   return (
     <div className="page form">
-      <Header title="" back />
+      <Header title="" back help="programs" />
       <input className="title-input" aria-label="Program name" value={p.name} onChange={(e) => set({ name: e.target.value })} />
       <div className="row-plain">
         <span className="grow small">{c ? `${fullName(c)} · ${positionText(p, today)}` : `Library program · ${totalWeeks(p)} weeks`}</span>

@@ -42,7 +42,7 @@ export function Reports() {
 
   return (
     <div className="page">
-      <Header title="Reports" sub={`${r.label} · ${rangeText}`} />
+      <Header title="Reports" sub={`${r.label} · ${rangeText}`} help="reports" />
       <Seg value={key} options={ranges.map((x) => [x.key, x.label] as [ReportRange['key'], string])} onChange={setKey} />
       <div className="grid2">
         <div className="stat stat-dark"><span className="stat-label">Cash collected</span><span className="stat-value">{money(total)}</span></div>

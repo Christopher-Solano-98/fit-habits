@@ -321,3 +321,15 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 .form input.inline-select[type=date] { padding: 8px 10px !important; height: 40px; }
 /* Side-by-side fields: label on top, box on the bottom, so boxes line up even when a label wraps. */
 .form .grid2 > label, .form .grid3 > label { justify-content: space-between; }
+
+.help-btn { color: var(--green); }
+.help-item { border-bottom: 1px solid var(--line-soft); }
+.help-item:last-child { border-bottom: none; }
+.help-item summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 52px; font-weight: 600; cursor: pointer; }
+.help-item summary::-webkit-details-marker { display: none; }
+.help-item summary span { flex: 1; }
+.help-item summary svg { transition: transform .15s; color: var(--muted); flex: none; }
+.help-item[open] summary svg { transform: rotate(90deg); }
+.help-item ol { margin: 0; padding: 0 16px 14px 36px; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); line-height: 1.45; }
+.help-item ol strong { color: var(--ink); }
+.help-tip { margin: 0 16px 14px; padding: 10px 12px; border-radius: 10px; background: var(--green-tint); color: var(--green-ink); font-size: 14px; }

@@ -29,7 +29,7 @@ export function ClientDetail() {
 
   return (
     <div className="page">
-      <Header title="" back action={<Link to={`/clients/${c.id}/edit`} className="btn-sm btn-outline"><Icon name="edit" size={14} /> Edit</Link>} />
+      <Header title="" back help={({ info: 'client-profile', pay: 'payment-mistake', workouts: 'workout', progress: 'exercises', files: 'intake' } as Record<string, string>)[tab]} action={<Link to={`/clients/${c.id}/edit`} className="btn-sm btn-outline"><Icon name="edit" size={14} /> Edit</Link>} />
       <div className="profile">
         <Avatar c={c} size={64} />
         <div>

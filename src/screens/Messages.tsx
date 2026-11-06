@@ -42,7 +42,7 @@ export function Messages() {
 
   return (
     <div className="page">
-      <Header title="Messages" sub="Newsletters, reminders and reports on autopilot" />
+      <Header title="Messages" sub="Newsletters, reminders and reports on autopilot" help="friday" />
 
       <div className="card dark pad stack-sm">
         <div className="row-plain">

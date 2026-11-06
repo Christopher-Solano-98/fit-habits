@@ -46,7 +46,7 @@ export function ClientForm() {
 
   return (
     <form className="page form" onSubmit={submit}>
-      <Header title={existing ? `Edit ${existing.firstName}` : 'New client'} back />
+      <Header title={existing ? `Edit ${existing.firstName}` : 'New client'} back help={existing ? 'edit-client' : 'add-client'} />
 
       <fieldset>
         <legend>About</legend>

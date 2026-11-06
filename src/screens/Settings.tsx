@@ -52,7 +52,7 @@ export function Settings() {
 
   return (
     <div className="page form">
-      <Header title="Settings" back />
+      <Header title="Settings" back help="connect" />
       <fieldset>
         <legend>You</legend>
         <label>Your name (used in messages)<input {...field('trainerName')} /></label>

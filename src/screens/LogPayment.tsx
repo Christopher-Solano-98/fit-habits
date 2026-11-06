@@ -86,7 +86,7 @@ export function LogPayment() {
 
   return (
     <form className="page form" onSubmit={submit}>
-      <Header title="Log a cash payment" />
+      <Header title="Log a cash payment" help="log-payment" />
       <label>Client</label>
       <div className="chips">
         {clients.map((x) => (

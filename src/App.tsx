@@ -16,6 +16,7 @@ import { Measure } from './screens/Measure';
 import { ExerciseDetail, ExercisePicker } from './screens/Exercises';
 import { SessionScreen, WorkoutLibrary, WorkoutTemplate } from './screens/Workouts';
 import { PlanView, ProgramEditor } from './screens/Programs';
+import { Help } from './screens/Help';
 import { LogPayment } from './screens/LogPayment';
 import { Messages } from './screens/Messages';
 import { Reports } from './screens/Reports';
@@ -66,6 +67,7 @@ function TrainerApp() {
           <Route path="/messages" element={<Messages />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/help" element={<Help />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </main>

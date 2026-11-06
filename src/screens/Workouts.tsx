@@ -197,7 +197,7 @@ export function SessionScreen() {
 
   return (
     <div className="page form">
-      <Header title="" back />
+      <Header title="" back help="workout" />
       <input className="title-input" aria-label="Workout name" value={s.name} onChange={(e) => set({ name: e.target.value })} />
       <div className="row-plain">
         <span className="grow small">{fullName(c)} · {doneCount(s)} of {s.items.length} done{s.completedAt ? ' · finished' : ''}</span>
@@ -323,7 +323,7 @@ export function WorkoutLibrary() {
   };
   return (
     <div className="page">
-      <Header title="Workouts & programs" sub="Reusable workouts and 8-week programs for any client" back />
+      <Header title="Workouts & programs" sub="Reusable workouts and 8-week programs for any client" back help="workout-library" />
       <ProgramsSection />
       <div className="section-head"><h2>Workouts</h2><button className="link-btn" onClick={create}>+ New workout</button></div>
       {list.length === 0 && <Empty>No saved workouts yet. Tap "New" to build one, or save any client's workout to the library.</Empty>}
@@ -360,7 +360,7 @@ export function WorkoutTemplate() {
 
   return (
     <div className="page form">
-      <Header title="" back />
+      <Header title="" back help="workout-library" />
       <input className="title-input" aria-label="Workout name" value={w.name} onChange={(e) => setW({ ...w, name: e.target.value })} />
       <p className="small">Saved automatically. {w.items.length} exercise{w.items.length === 1 ? '' : 's'}.</p>
       <ItemsEditor items={w.items} onChange={(items) => setW({ ...w, items })} mode="template" />

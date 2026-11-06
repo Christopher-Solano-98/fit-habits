@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import type { Client } from '@shared/types.ts';
 import type { PayStatus } from '@shared/billing.ts';
 import { fillTemplate, smsHref } from '@shared/messages.ts';
@@ -16,7 +16,7 @@ export function Avatar({ c, size = 44 }: { c: Client; size?: number }) {
   return <span className="avatar" style={{ width: size, height: size, fontSize: size * 0.36 }}>{initials.toUpperCase()}</span>;
 }
 
-export function Header({ title, sub, back, action }: { title: string; sub?: ReactNode; back?: boolean; action?: ReactNode }) {
+export function Header({ title, sub, back, action, help }: { title: string; sub?: ReactNode; back?: boolean; action?: ReactNode; help?: string }) {
   const nav = useNavigate();
   return (
     <header className="header">
@@ -30,10 +30,19 @@ export function Header({ title, sub, back, action }: { title: string; sub?: Reac
           {title && <h1>{title}</h1>}
           {sub && <div className="sub">{sub}</div>}
         </div>
-        {action}
+        {(action || help) && (
+          <div className="header-actions">
+            {help && <HelpButton topic={help} />}
+            {action}
+          </div>
+        )}
       </div>
     </header>
   );
+}
+
+export function HelpButton({ topic }: { topic: string }) {
+  return <Link to={`/help?topic=${topic}`} className="icon-btn help-btn" aria-label="Help"><Icon name="help" /></Link>;
 }
 
 export function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
