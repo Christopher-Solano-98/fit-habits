@@ -114,6 +114,7 @@ function route_(req) {
     case 'deleteFile': return withLock_(function () { return deleteFile_(req.id); });
     case 'notify': return notify_(req);
     case 'status': return status_();
+    case 'motivationStatus': return JSON.parse(PROPS.getProperty('LAST_MOTIVATION') || 'null');
     case 'motivationPreview': return motivationPreview_(getSettings_() || {}, local_((getSettings_() || {}).timezone).date, readTable_('clients').filter(function (c) { return c.active; }));
     default: throw new Error('Unknown action ' + a);
   }
@@ -464,18 +465,7 @@ function hourly() {
     motivationPreview_(s, t.date, active);
   }
   if (m.enabled && t.weekday === m.weekday && t.hour === Number(String(m.time).slice(0, 2)) && !done_('motivation', t.date)) {
-    var lib = readTable_('motivations').sort(function (a, b) { return (a.sentOn || '') < (b.sentOn || '') ? -1 : 1; });
-    var msg = lib[0];
-    if (msg) {
-      FH.motivationRecipients(active, m).forEach(function (c) {
-        var reach = FH.motivationReach(c, m);
-        if (reach.text && twilioReady_()) log_('motivation', 'text', c.phone, msg.body, sendText_(c.phone, msg.body), t.date, c.id);
-        if (reach.email) log_('motivation', 'email', c.email, msg.body, sendEmail_(c.email, 'Your ' + s.businessName + ' motivation', 'Hey ' + c.firstName + ',\n\n' + msg.body + '\n\n- ' + s.trainerName, s), t.date, c.id);
-      });
-      msg.sentOn = t.date;
-      put_('motivations', msg);
-      log_('motivation', 'batch', 'all', msg.body, { ok: true }, t.date, '');
-    }
+    motivationSend_(s, t, active);
   }
 
   if (!s.email) return;
@@ -578,6 +568,62 @@ function checkSetup() {
 
 // ---------- motivation preview ----------
 
+var NO_AUTO_TEXT_ = 'Only takes texts, and automatic texts aren\'t set up yet, so text them yourself';
+
+/** Like FH.motivationReach, but a text only counts if texts actually go out on their own. */
+function reachNow_(c, m) {
+  var r = FH.motivationReach(c, m);
+  if (r.reason || !r.text || twilioReady_()) return r;
+  if (r.email) return { text: false, email: true, reason: null };
+  return { text: false, email: false, reason: NO_AUTO_TEXT_ };
+}
+
+/** Sends the weekly motivation, remembers who got it, and emails the trainer a confirmation. */
+function motivationSend_(s, t, active) {
+  var m = s.motivation || {};
+  var lib = readTable_('motivations').sort(function (a, b) { return (a.sentOn || '') < (b.sentOn || '') ? -1 : 1; });
+  var msg = lib[0];
+  if (!msg) return null;
+  var excluded = m.excluded || [];
+  var sum = { date: t.date, sentAt: new Date().toISOString(), message: msg.body, got: [], failed: [], missed: [] };
+  active.forEach(function (c) {
+    var who = { id: c.id, name: name_(c) };
+    if (excluded.indexOf(c.id) >= 0) { who.reason = 'Taken off the list'; sum.missed.push(who); return; }
+    var reach = reachNow_(c, m);
+    if (reach.reason) { who.reason = reach.reason; who.textYourself = reach.reason === NO_AUTO_TEXT_; sum.missed.push(who); return; }
+    var how = [], errs = [];
+    if (reach.text) {
+      var rt = sendText_(c.phone, msg.body);
+      log_('motivation', 'text', c.phone, msg.body, rt, t.date, c.id);
+      if (rt.ok) how.push('text'); else errs.push(rt.error);
+    }
+    if (reach.email) {
+      var re = sendEmail_(c.email, 'Your ' + s.businessName + ' motivation', 'Hey ' + c.firstName + ',\n\n' + msg.body + '\n\n- ' + s.trainerName, s);
+      log_('motivation', 'email', c.email, msg.body, re, t.date, c.id);
+      if (re.ok) how.push('email'); else errs.push(re.error);
+    }
+    if (how.length) { who.how = how.join(' and '); sum.got.push(who); } else { who.reason = errs.join('; '); sum.failed.push(who); }
+  });
+  msg.sentOn = t.date;
+  put_('motivations', msg);
+  log_('motivation', 'batch', 'all', msg.body, { ok: true }, t.date, '');
+  PROPS.setProperty('LAST_MOTIVATION', JSON.stringify(sum));
+
+  var pv = m.preview || { enabled: true, email: '', time: '07:00' };
+  var to = pv.email || s.email;
+  if (pv.enabled && to) {
+    var line = function (x) { return '  ' + x.name + (x.how ? ' (' + x.how + ')' : x.reason ? ' (' + x.reason.charAt(0).toLowerCase() + x.reason.slice(1) + ')' : ''); };
+    var body = ['Your ' + (s.businessName || 'Fit Habits') + ' motivation went out today (' + FH.WEEKDAYS[t.weekday] + ').', '', '"' + msg.body + '"', '',
+      'Got it (' + sum.got.length + '):'].concat(sum.got.length ? sum.got.map(line) : ['  Nobody'])
+      .concat(sum.failed.length ? ['', 'Didn\'t go through (' + sum.failed.length + '):'].concat(sum.failed.map(line)) : [])
+      .concat(sum.missed.length ? ['', 'Not sent (' + sum.missed.length + '):'].concat(sum.missed.map(line)) : [])
+      .concat(['', 'See the same list in the app under Messages.' + (s.appUrl ? ' ' + s.appUrl + '#/messages' : '')]).join('\n');
+    var subject = 'Sent: this week\'s motivation went to ' + sum.got.length + ' client' + (sum.got.length === 1 ? '' : 's');
+    log_('motivation-confirm', 'email', to, body, sendEmail_(to, subject, body, s), t.date);
+  }
+  return sum;
+}
+
 /** Emails the trainer tomorrow's motivation: the message, when, how and who gets it. */
 function motivationPreview_(s, date, active) {
   var m = s.motivation || {};
@@ -588,12 +634,13 @@ function motivationPreview_(s, date, active) {
   var msg = lib[0];
   if (!msg) throw new Error('No motivation message yet. Write one in Messages.');
   var excluded = m.excluded || [];
-  var notTo = active.filter(function (c) { return excluded.indexOf(c.id) < 0 && FH.motivationReach(c, m).reason; })
-    .map(function (c) { return { client: c, reason: FH.motivationReach(c, m).reason.toLowerCase() }; })
+  var listed = active.filter(function (c) { return excluded.indexOf(c.id) < 0; });
+  var notTo = listed.filter(function (c) { return reachNow_(c, m).reason; })
+    .map(function (c) { return { client: c, reason: reachNow_(c, m).reason.toLowerCase() }; })
     .concat(active.filter(function (c) { return excluded.indexOf(c.id) >= 0; }).map(function (c) { return { client: c, reason: 'taken off the list' }; }));
   var body = FH.motivationPreviewText({
     message: msg.body, weekdayName: FH.WEEKDAYS[m.weekday], time: FH.fmtTime(String(m.time || '07:00')), channel: m.channel || 'both',
-    to: FH.motivationRecipients(active, m), notTo: notTo, appUrl: s.appUrl || ''
+    to: listed.filter(function (c) { return !reachNow_(c, m).reason; }), notTo: notTo, appUrl: s.appUrl || ''
   });
   var r = sendEmail_(to, 'Preview: tomorrow\'s Fit Habits motivation', body, s);
   log_('motivation-preview', 'email', to, body, r, date);

@@ -133,7 +133,7 @@ describe('Apps Script backend', () => {
     g.call('put', { table: 'motivations', row: { id: 'm1', body: 'Keep going', sentOn: null, createdAt: 'x' } });
     g.ctx.hourly();
     g.ctx.hourly(); // same hour again: no repeat
-    expect(g.mail.filter((m: { body: string }) => m.body.includes('Keep going'))).toHaveLength(1);
+    expect(g.mail.filter((m: { subject: string; body: string }) => !m.subject.startsWith('Sent:') && m.body.includes('Keep going'))).toHaveLength(1);
     expect(g.call('load').result.motivations[0].sentOn).toBe('2026-11-06');
 
     now = new Date('2026-11-06T23:00:00Z'); // Fri 6:00 PM New York: alert + weekly report

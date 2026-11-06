@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Channel, Client, Motivation, Template } from '@shared/types.ts';
 import { fmtShort, fmtTime, WEEKDAYS } from '@shared/dates.ts';
 import { mailtoHref, motivationPreviewText, motivationReach, motivationRecipients, smsHref } from '@shared/messages.ts';
@@ -80,6 +80,7 @@ export function Messages() {
           {s.phone ? <a className="btn btn-outline-dark" href={draft.trim() ? smsHref(s.phone, draft.trim()) : undefined}>Text me a test</a> : <button className="btn btn-outline-dark" onClick={() => toast('Add your phone number in Settings')}>Text me a test</button>}
           <button className="btn btn-light" onClick={copyNext}>Copy message</button>
         </div>
+        <LastSend />
         <PreviewSettings />
       </div>
 
@@ -271,6 +272,59 @@ function PreviewSettings() {
         </div>
       )}
       <button className="btn btn-outline-dark" disabled={sending} onClick={sendNow}>{sending ? 'Sending…' : 'Send preview now'}</button>
+    </div>
+  );
+}
+
+interface SendSummary {
+  date: string;
+  sentAt: string;
+  message: string;
+  got: { id: string; name: string; how: string }[];
+  failed: { id: string; name: string; reason: string }[];
+  missed: { id: string; name: string; reason: string; textYourself?: boolean }[];
+}
+
+/** Who actually got the last weekly motivation, with a Text button for anyone it couldn't reach on its own. */
+function LastSend() {
+  const { snap, repo } = useStore();
+  const [sum, setSum] = useState<SendSummary | null | undefined>(undefined);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const conn = getConnection();
+    if (repo.mode !== 'sheets' || !conn) return;
+    gasCall<SendSummary | null>(conn.api, { action: 'motivationStatus', key: conn.key }).then(setSum).catch(() => setSum(null));
+  }, [repo]);
+  if (repo.mode !== 'sheets' || sum === undefined) return null;
+  if (!sum) return <div className="preview-box"><span className="small on-dark">Not sent yet. After it goes out, you'll see here who got it, and you'll get an email.</span></div>;
+  const phone = (id: string) => snap.clients.find((c) => c.id === id)?.phone;
+  const toText = sum.missed.filter((x) => x.textYourself && phone(x.id));
+  const when = new Date(sum.sentAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return (
+    <div className="preview-box stack-sm">
+      <button type="button" className="row-plain link-row" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span style={{ color: '#9FD8B7' }}><Icon name="check" size={18} /></span>
+        <span className="grow">
+          <strong>Last sent {fmtShort(sum.date)} at {when}</strong>
+          <span className="small on-dark">{sum.got.length} got it{sum.failed.length ? ` · ${sum.failed.length} didn't go through` : ''}{sum.missed.length ? ` · ${sum.missed.length} not sent` : ''}</span>
+        </span>
+        <Icon name="chevron" size={16} />
+      </button>
+      {open && (
+        <div className="stack-sm small on-dark">
+          {sum.got.map((x) => <div key={x.id}>✓ {x.name} <span className="muted-dark">by {x.how}</span></div>)}
+          {sum.failed.map((x) => <div key={x.id} className="warn-text">✗ {x.name}: {x.reason}</div>)}
+          {sum.missed.map((x) => (
+            <div key={x.id} className="row-plain">
+              <span className="grow">– {x.name}: {x.reason}</span>
+              {x.textYourself && phone(x.id) && <a className="btn-sm" href={smsHref(phone(x.id)!, sum.message)}>Text</a>}
+            </div>
+          ))}
+        </div>
+      )}
+      {toText.length > 0 && !open && (
+        <span className="small on-dark">{toText.length} client{toText.length === 1 ? '' : 's'} only take{toText.length === 1 ? 's' : ''} texts. Tap above to text {toText.length === 1 ? 'them' : 'each one'} this week's message.</span>
+      )}
     </div>
   );
 }

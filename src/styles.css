@@ -356,3 +356,6 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 
 .preview-box { border-top: 1px solid #3A3E46; padding-top: 14px; margin-top: 2px; }
 .preview-box .small.on-dark { display: block; }
+
+.link-row { width: 100%; background: none; border: 0; color: inherit; text-align: left; padding: 0; font: inherit; }
+.muted-dark { opacity: .7; }

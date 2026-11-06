@@ -36,7 +36,7 @@ describe('weekly motivation list', () => {
     call('put', { table: 'clients', row: client({ id: 'c2', firstName: 'Tasha', email: 'tasha@example.com' }) });
     call('put', { table: 'motivations', row: { id: 'x', body: 'Show up today', sentOn: null, createdAt: 'x' } });
     g.ctx.hourly();
-    const to = g.mail.filter((e: { body: string }) => e.body.includes('Show up today')).map((e: { to: string }) => e.to);
+    const to = g.mail.filter((e: { subject: string; body: string }) => !e.subject.startsWith('Sent:') && e.body.includes('Show up today')).map((e: { to: string }) => e.to);
     expect(to).toEqual(['m@example.com']);
   });
 });
@@ -81,4 +81,40 @@ describe('day-before motivation preview', () => {
     expect(g.mail.filter((e: { subject: string }) => e.subject.startsWith('Preview'))).toHaveLength(0);
     expect(call('motivationPreview').result).toEqual({ sent: true, to: 'anthonychesleyjr@gmail.com' });
   });
+
+  it('says who will not get it because automatic texts are not set up', () => {
+    const { g, call } = setupGas(new Date('2026-11-05T12:00:00Z'), { enabled: true, email: 'anthonychesleyjr@gmail.com', time: '07:00' });
+    call('put', { table: 'clients', row: client({ id: 'c4', firstName: 'Jay', lastName: 'Kim', channel: 'text', email: null }) });
+    g.ctx.hourly();
+    const body = g.mail.find((e: { subject: string }) => e.subject.startsWith('Preview')).body;
+    expect(body).toContain('Going to 1 client: Marcus Reed');
+    expect(body).toMatch(/Jay \(only takes texts, and automatic texts aren't set up yet, so text them yourself\)/);
+  });
 });
+
+describe('after the Friday motivation sends', () => {
+  it('emails Tony who got it and the app can show the same list', () => {
+    const g = createGas({ now: () => new Date('2026-11-06T12:00:00Z') }); // Fri 7 AM NY
+    g.ctx.setup();
+    const call = (action: string, extra: Record<string, unknown> = {}) => g.post({ action, key: g.props.APP_KEY, ...extra });
+    call('saveSettings', { settings: { businessName: 'Fit Habits', trainerName: 'Tony', email: 'fit.habits96@gmail.com', timezone: 'America/New_York', motivation: m({ excluded: ['c3'], preview: { enabled: true, email: 'anthonychesleyjr@gmail.com', time: '07:00' } }), alerts: {}, reports: {} } });
+    call('put', { table: 'clients', row: client() });
+    call('put', { table: 'clients', row: client({ id: 'c2', firstName: 'Jay', lastName: 'Kim', channel: 'text', email: null }) });
+    call('put', { table: 'clients', row: client({ id: 'c3', firstName: 'Devon' }) });
+    call('put', { table: 'motivations', row: { id: 'x', body: 'Show up today', sentOn: null, createdAt: 'x' } });
+    expect(call('motivationStatus').result).toBeNull();
+    g.ctx.hourly();
+    g.ctx.hourly();
+    const sent = g.mail.filter((e: { subject: string }) => e.subject.startsWith('Sent:'));
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toBe('anthonychesleyjr@gmail.com');
+    expect(sent[0].subject).toBe("Sent: this week's motivation went to 1 client");
+    expect(sent[0].body).toContain('Marcus Reed (email)');
+    expect(sent[0].body).toContain('Jay Kim (only takes texts');
+    expect(sent[0].body).toContain('Devon Reed (taken off the list)');
+    const st = call('motivationStatus').result;
+    expect(st).toMatchObject({ date: '2026-11-06', message: 'Show up today', got: [{ id: 'c1', how: 'email' }], failed: [] });
+    expect(st.missed).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'c2', textYourself: true }), expect.objectContaining({ id: 'c3', reason: 'Taken off the list' })]));
+  });
+});
+
