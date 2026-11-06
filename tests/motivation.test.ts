@@ -40,3 +40,45 @@ describe('weekly motivation list', () => {
     expect(to).toEqual(['m@example.com']);
   });
 });
+
+describe('day-before motivation preview', () => {
+  const setupGas = (now: Date, preview?: object) => {
+    const g = createGas({ now: () => now });
+    g.ctx.setup();
+    const call = (action: string, extra: Record<string, unknown> = {}) => g.post({ action, key: g.props.APP_KEY, ...extra });
+    call('saveSettings', { settings: { businessName: 'Fit Habits', trainerName: 'Tony', email: 'fit.habits96@gmail.com', timezone: 'America/New_York', motivation: m({ excluded: ['c3'], ...(preview ? { preview } : {}) }), alerts: {}, reports: {} } });
+    call('put', { table: 'clients', row: client() });
+    call('put', { table: 'clients', row: client({ id: 'c2', firstName: 'Tasha', email: null, phone: null }) });
+    call('put', { table: 'clients', row: client({ id: 'c3', firstName: 'Devon' }) });
+    call('put', { table: 'motivations', row: { id: 'x', body: 'One more good choice this weekend', sentOn: null, createdAt: 'x' } });
+    return { g, call };
+  };
+
+  it('emails Tony the message and who gets it on Thursday at 7 AM, once', () => {
+    const { g } = setupGas(new Date('2026-11-05T12:00:00Z'), { enabled: true, email: 'anthonychesleyjr@gmail.com', time: '07:00' }); // Thu 7 AM NY
+    g.ctx.hourly();
+    g.ctx.hourly();
+    const previews = g.mail.filter((e: { subject: string }) => e.subject.startsWith('Preview'));
+    expect(previews).toHaveLength(1);
+    expect(previews[0].to).toBe('anthonychesleyjr@gmail.com');
+    expect(previews[0].body).toContain('"One more good choice this weekend"');
+    expect(previews[0].body).toContain('tomorrow (Friday) at 7:00 AM by text and email');
+    expect(previews[0].body).toContain('Going to 1 client: Marcus Reed');
+    expect(previews[0].body).toMatch(/Not getting it: .*Tasha \(no phone number on file\).*Devon \(taken off the list\)/);
+    // the preview doesn't count as sending the motivation itself
+    expect(g.mail.filter((e: { body: string }) => e.body.includes('Hey Marcus'))).toHaveLength(0);
+  });
+
+  it('is on by default for sheets set up earlier, going to the report email', () => {
+    const { g } = setupGas(new Date('2026-11-05T12:00:00Z'));
+    g.ctx.hourly();
+    expect(g.mail.find((e: { subject: string }) => e.subject.startsWith('Preview'))?.to).toBe('fit.habits96@gmail.com');
+  });
+
+  it('can be turned off, and "send now" works any day', () => {
+    const { g, call } = setupGas(new Date('2026-11-05T12:00:00Z'), { enabled: false, email: 'anthonychesleyjr@gmail.com', time: '07:00' });
+    g.ctx.hourly();
+    expect(g.mail.filter((e: { subject: string }) => e.subject.startsWith('Preview'))).toHaveLength(0);
+    expect(call('motivationPreview').result).toEqual({ sent: true, to: 'anthonychesleyjr@gmail.com' });
+  });
+});

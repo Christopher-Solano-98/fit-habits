@@ -140,13 +140,18 @@ export interface Settings {
   email: string;
   phone: string;
   /** excluded: clients taken off the weekly list (everyone else, including new clients, is on it). */
-  motivation: { enabled: boolean; weekday: number; time: string; channel: Channel; excluded?: string[] };
+  motivation: {
+    enabled: boolean; weekday: number; time: string; channel: Channel; excluded?: string[];
+    /** Email the trainer a preview the day before (empty email = the report email). */
+    preview?: { enabled: boolean; email: string; time: string };
+  };
   alerts: { missedPayments: boolean; graceDays: number; emailTime: string };
   reports: { weekly: boolean; biweekly: boolean; monthly: boolean };
   scanReminderMonths: number;
   timezone: string; // IANA zone used by the scheduled jobs, e.g. America/New_York
   waiverText: string; // shown on the client intake form and saved with each signature
   exerciseLinks: Record<string, string>; // exercise id → the trainer's own how-to video link
+  appUrl?: string; // where the app lives, linked from emails
 }
 
 export interface Snapshot {

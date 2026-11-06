@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { Channel, Client, Motivation, Template } from '@shared/types.ts';
 import { fmtShort, fmtTime, WEEKDAYS } from '@shared/dates.ts';
-import { motivationReach, motivationRecipients, smsHref } from '@shared/messages.ts';
+import { mailtoHref, motivationPreviewText, motivationReach, motivationRecipients, smsHref } from '@shared/messages.ts';
+import { gasCall, getConnection } from '../data/connection';
 import { byName, fullName } from '../lib/util';
 import { useStore } from '../data/store';
 import { nowIso, uid } from '../data/repo';
@@ -79,6 +80,7 @@ export function Messages() {
           {s.phone ? <a className="btn btn-outline-dark" href={draft.trim() ? smsHref(s.phone, draft.trim()) : undefined}>Text me a test</a> : <button className="btn btn-outline-dark" onClick={() => toast('Add your phone number in Settings')}>Text me a test</button>}
           <button className="btn btn-light" onClick={copyNext}>Copy message</button>
         </div>
+        <PreviewSettings />
       </div>
 
       <Section title="Motivation library" action={<button className="link-btn" onClick={() => { setEditKind('motivation'); setEditing({ id: uid(), body: '', sentOn: null, createdAt: nowIso() }); }}>+ Add</button>}>
@@ -207,6 +209,68 @@ function EditSheet({ kind, item, onClose, onSave, onDelete }: { kind: 'motivatio
         <button className="btn btn-block" disabled={!body.trim()} onClick={() => onSave(kind === 'template' ? { ...(item as Template), title: title || 'Untitled', body } : { ...(item as Motivation), body })}>Save</button>
         <button className="btn-ghost danger" onClick={onDelete}>Delete</button>
       </div>
+    </div>
+  );
+}
+
+/** Day-before preview email to the trainer: what goes out tomorrow and to whom. */
+function PreviewSettings() {
+  const { snap, saveSettings, toast, repo } = useStore();
+  const s = snap.settings;
+  const m = s.motivation;
+  const pv = m.preview ?? { enabled: true, email: '', time: '07:00' };
+  const [email, setEmail] = useState(pv.email);
+  const [sending, setSending] = useState(false);
+  const save = (patch: Partial<typeof pv>) =>
+    saveSettings({ ...s, appUrl: `${location.origin}${location.pathname}`, motivation: { ...m, preview: { ...pv, ...patch } } });
+  const dayBefore = WEEKDAYS[(m.weekday + 6) % 7];
+  const to = pv.email || s.email;
+
+  const sendNow = async () => {
+    const conn = getConnection();
+    if (email.trim() !== pv.email) save({ email: email.trim() });
+    if (repo.mode === 'sheets' && conn) {
+      setSending(true);
+      try {
+        // Save first so the server uses the email just typed.
+        await saveSettings({ ...s, appUrl: `${location.origin}${location.pathname}`, motivation: { ...m, preview: { ...pv, email: email.trim() } } });
+        const r = await gasCall<{ to: string }>(conn.api, { action: 'motivationPreview', key: conn.key });
+        toast(`Preview emailed to ${r.to}`);
+      } catch (e) {
+        toast(`Couldn't send the preview: ${(e as Error).message}`);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+    // Not connected: open Mail with the same preview text.
+    const lib = [...snap.motivations].sort((a, b) => ((a.sentOn ?? '') < (b.sentOn ?? '') ? -1 : 1));
+    const active = snap.clients.filter((c) => c.active);
+    const body = motivationPreviewText({
+      message: lib[0]?.body ?? '', weekdayName: WEEKDAYS[m.weekday], time: fmtTime(m.time), channel: m.channel,
+      to: motivationRecipients(active, m),
+      notTo: active.filter((c) => motivationReach(c, m).reason).map((c) => ({ client: c, reason: motivationReach(c, m).reason!.toLowerCase() })),
+      appUrl: `${location.origin}${location.pathname}`,
+    });
+    location.href = mailtoHref(email.trim() || s.email || '', "Preview: tomorrow's Fit Habits motivation", body);
+  };
+
+  return (
+    <div className="preview-box stack-sm">
+      <div className="row-plain">
+        <span className="grow">
+          <strong>Email me a preview the day before</strong>
+          <span className="small on-dark">{pv.enabled ? `${dayBefore} at ${fmtTime(pv.time)}: the message and who it's going to${to ? `, sent to ${to}` : ''}.` : 'Off'}</span>
+        </span>
+        <Toggle on={pv.enabled} label="Day-before preview" onChange={(v) => save({ enabled: v })} />
+      </div>
+      {pv.enabled && (
+        <div className="grid2">
+          <label className="on-dark">Send preview to<input type="email" inputMode="email" autoCapitalize="none" placeholder={s.email || 'you@gmail.com'} value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => email.trim() !== pv.email && save({ email: email.trim() })} /></label>
+          <label className="on-dark">At<input type="time" value={pv.time} onChange={(e) => save({ time: e.target.value || '07:00' })} /></label>
+        </div>
+      )}
+      <button className="btn btn-outline-dark" disabled={sending} onClick={sendNow}>{sending ? 'Sending…' : 'Send preview now'}</button>
     </div>
   );
 }

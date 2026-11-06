@@ -47,6 +47,8 @@ describe('Apps Script backend', () => {
     expect(r.clients).toHaveLength(1);
     expect(r.clients[0]).toMatchObject({ phone: '5552014410', active: false, rate: 150, sessionDays: [1, 3, 5], address: null, birthDate: '1992-03-14' });
     expect(r.payments[0].amount).toBe(150);
+    g.call('put', { table: 'clients', row: client({ id: 'c9', lastName: '' }) });
+    expect(g.call('load').result.clients.find((c: { id: string }) => c.id === 'c9').lastName).toBe('');
     expect(r.measurements[0].values).toEqual({ weight: 191, mile: 462 });
     expect(r.settings).toMatchObject({ businessName: 'Fit Habits', motivation: { enabled: true, weekday: 5 } });
   });

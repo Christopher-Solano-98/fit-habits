@@ -9,7 +9,7 @@ export function defaultSettings(): Settings {
     businessName: 'Fit Habits',
     email: '',
     phone: '',
-    motivation: { enabled: true, weekday: 5, time: '07:00', channel: 'both' },
+    motivation: { enabled: true, weekday: 5, time: '07:00', channel: 'both', preview: { enabled: true, email: '', time: '07:00' } },
     alerts: { missedPayments: true, graceDays: 2, emailTime: '18:00' },
     reports: { weekly: true, biweekly: true, monthly: true },
     scanReminderMonths: 4,

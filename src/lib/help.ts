@@ -252,6 +252,7 @@ export const HELP: HelpSection[] = [
           'Set the day, time, and **Text**, **Email** or **Both**.',
           'Tap **Text me a test** to see how it looks.',
           'It sends on its own every week. Each client gets their own message, so nobody sees the others.',
+          'The day before (Thursday at 7 AM) you get a preview email with the message and who it\u2019s going to, so you can change it in time. Set where it goes under **Email me a preview the day before**.',
         ],
       },
       {

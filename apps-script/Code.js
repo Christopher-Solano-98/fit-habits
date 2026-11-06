@@ -113,6 +113,7 @@ function route_(req) {
     case 'deleteFile': return withLock_(function () { return deleteFile_(req.id); });
     case 'notify': return notify_(req);
     case 'status': return status_();
+    case 'motivationPreview': return motivationPreview_(getSettings_() || {}, local_((getSettings_() || {}).timezone).date, readTable_('clients').filter(function (c) { return c.active; }));
     default: throw new Error('Unknown action ' + a);
   }
 }
@@ -169,6 +170,7 @@ function readTable_(table) {
     var o = {};
     head.forEach(function (k, i) { if (types[k]) o[k] = fromCell_(types[k], r[i]); });
     if (table === 'clients' && !Array.isArray(o.sessionDays)) o.sessionDays = [];
+    if (table === 'clients') { if (o.lastName == null) o.lastName = ''; if (o.firstName == null) o.firstName = ''; }
     if (table === 'measurements' && !o.values) o.values = {};
     if ((table === 'workouts' || table === 'sessions') && !Array.isArray(o.items)) o.items = [];
     if (table === 'programs') { if (!Array.isArray(o.days)) o.days = []; if (!Array.isArray(o.phases)) o.phases = []; }
@@ -444,6 +446,10 @@ function hourly() {
 
   // Weekly motivation (email; text too once Twilio is set up)
   var m = s.motivation || {};
+  var pv = m.preview || { enabled: true, email: '', time: '07:00' };
+  if (m.enabled && pv.enabled && t.weekday === (m.weekday + 6) % 7 && t.hour === Number(String(pv.time || '07:00').slice(0, 2)) && !done_('motivation-preview', t.date)) {
+    motivationPreview_(s, t.date, active);
+  }
   if (m.enabled && t.weekday === m.weekday && t.hour === Number(String(m.time).slice(0, 2)) && !done_('motivation', t.date)) {
     var lib = readTable_('motivations').sort(function (a, b) { return (a.sentOn || '') < (b.sentOn || '') ? -1 : 1; });
     var msg = lib[0];
@@ -555,4 +561,29 @@ function checkSetup() {
   lines.push(twilioReady_() ? '✅ Automatic texts on' : 'ℹ️ Automatic texts off (texts open the phone\'s Messages app until Twilio is added)');
   Logger.log(lines.join('\n'));
   return lines.join('\n');
+}
+
+// ---------- motivation preview ----------
+
+/** Emails the trainer tomorrow's motivation: the message, when, how and who gets it. */
+function motivationPreview_(s, date, active) {
+  var m = s.motivation || {};
+  var pv = m.preview || { enabled: true, email: '', time: '07:00' };
+  var to = pv.email || s.email;
+  if (!to) throw new Error('Add an email for the preview in Messages, or your email in Settings.');
+  var lib = readTable_('motivations').sort(function (a, b) { return (a.sentOn || '') < (b.sentOn || '') ? -1 : 1; });
+  var msg = lib[0];
+  if (!msg) throw new Error('No motivation message yet. Write one in Messages.');
+  var excluded = m.excluded || [];
+  var notTo = active.filter(function (c) { return excluded.indexOf(c.id) < 0 && FH.motivationReach(c, m).reason; })
+    .map(function (c) { return { client: c, reason: FH.motivationReach(c, m).reason.toLowerCase() }; })
+    .concat(active.filter(function (c) { return excluded.indexOf(c.id) >= 0; }).map(function (c) { return { client: c, reason: 'taken off the list' }; }));
+  var body = FH.motivationPreviewText({
+    message: msg.body, weekdayName: FH.WEEKDAYS[m.weekday], time: FH.fmtTime(String(m.time || '07:00')), channel: m.channel || 'both',
+    to: FH.motivationRecipients(active, m), notTo: notTo, appUrl: s.appUrl || ''
+  });
+  var r = sendEmail_(to, 'Preview: tomorrow\'s Fit Habits motivation', body, s);
+  log_('motivation-preview', 'email', to, body, r, date);
+  if (!r.ok) throw new Error(r.error);
+  return { sent: true, to: to };
 }

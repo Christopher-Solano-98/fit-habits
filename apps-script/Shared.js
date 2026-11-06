@@ -59,6 +59,7 @@ var FH = (() => {
     isMetric: () => isMetric,
     mailtoHref: () => mailtoHref,
     metric: () => metric,
+    motivationPreviewText: () => motivationPreviewText,
     motivationReach: () => motivationReach,
     motivationRecipients: () => motivationRecipients,
     needsAttention: () => needsAttention,
@@ -463,6 +464,23 @@ var FH = (() => {
   }
   function mailtoHref(email, subject, body) {
     return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+  function motivationPreviewText(o) {
+    const how = o.channel === "both" ? "text and email" : o.channel;
+    const lines = [
+      `Here's the Fit Habits motivation going out tomorrow (${o.weekdayName}) at ${o.time} by ${how}:`,
+      "",
+      `"${o.message}"`,
+      "",
+      `Going to ${o.to.length} client${o.to.length === 1 ? "" : "s"}: ${o.to.map((c) => {
+        var _a;
+        return `${c.firstName} ${(_a = c.lastName) != null ? _a : ""}`.trim();
+      }).join(", ") || "nobody yet"}`
+    ];
+    if (o.notTo.length) lines.push(`Not getting it: ${o.notTo.map((x) => `${x.client.firstName} (${x.reason})`).join(", ")}`);
+    lines.push("", "To change the message or who gets it, open the Fit Habits app \u2192 Messages before then.");
+    if (o.appUrl) lines.push(o.appUrl);
+    return lines.join("\n");
   }
 
   // supabase/functions/_shared/parq.ts

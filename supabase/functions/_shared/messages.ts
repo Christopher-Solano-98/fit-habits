@@ -1,4 +1,4 @@
-import type { Client, Payment, Settings } from './types.ts';
+import type { Channel, Client, Payment, Settings } from './types.ts';
 import { fmtLong, WEEKDAYS_SHORT } from './dates.ts';
 
 export function scheduleText(c: Client): string {
@@ -70,4 +70,20 @@ export function telHref(phone: string): string {
 
 export function mailtoHref(email: string, subject: string, body: string): string {
   return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+/** The day-before preview email: tomorrow's message, when, how, and who gets it. */
+export function motivationPreviewText(o: { message: string; weekdayName: string; time: string; channel: Channel; to: Client[]; notTo: { client: Client; reason: string }[]; appUrl?: string }): string {
+  const how = o.channel === 'both' ? 'text and email' : o.channel;
+  const lines = [
+    `Here's the Fit Habits motivation going out tomorrow (${o.weekdayName}) at ${o.time} by ${how}:`,
+    '',
+    `"${o.message}"`,
+    '',
+    `Going to ${o.to.length} client${o.to.length === 1 ? '' : 's'}: ${o.to.map((c) => `${c.firstName} ${c.lastName ?? ''}`.trim()).join(', ') || 'nobody yet'}`,
+  ];
+  if (o.notTo.length) lines.push(`Not getting it: ${o.notTo.map((x) => `${x.client.firstName} (${x.reason})`).join(', ')}`);
+  lines.push('', 'To change the message or who gets it, open the Fit Habits app → Messages before then.');
+  if (o.appUrl) lines.push(o.appUrl);
+  return lines.join('\n');
 }
