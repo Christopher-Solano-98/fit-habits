@@ -7,7 +7,8 @@ import { migrateSnapshot } from './migrate';
 // Demo mode: everything lives in this browser. Records go in localStorage,
 // uploaded files in IndexedDB (localStorage is too small for photos and PDFs).
 // v2: the main app starts with a clean slate (v1 started with sample clients).
-const KEY = IS_SAMPLE ? 'fithabits.sample.v5' : 'fithabits.demo.v2';
+export const LOCAL_KEY = IS_SAMPLE ? 'fithabits.sample.v5' : 'fithabits.demo.v2';
+const KEY = LOCAL_KEY;
 
 function read(): Snapshot | null {
   try {
@@ -38,6 +39,21 @@ async function blobOp<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => ID
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+}
+
+/** What this phone saved on its own (before it was connected), if anything. */
+export function readLocalSnapshot(): Snapshot | null {
+  const s = read();
+  if (s) migrateSnapshot(s);
+  return s;
+}
+
+export async function readLocalBlob(key: string): Promise<Blob | undefined> {
+  try {
+    return await blobOp<Blob | undefined>('readonly', (s) => s.get(key));
+  } catch {
+    return undefined;
+  }
 }
 
 /** Mirrors the database's ON DELETE CASCADE for a deleted client. */

@@ -277,6 +277,7 @@ export const HELP: HelpSection[] = [
           'Open the app link in **Safari** → **Share** → **Add to Home Screen**.',
           'Open it from the icon → gear → **Settings** → paste your connection code → **Connect Google Sheet**.',
           'Ask Chris for the connection code and Web app URL. Keep the code private: it unlocks your client data.',
+          'Anything you added before connecting shows up on **Home** as “saved only on this phone”. Tap **Move them to my Google Sheet**. Connect from the same place you added them (the Home Screen icon or Safari), because on iPhone each one keeps its own copy.',
         ],
       },
       {

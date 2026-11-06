@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Client } from '@shared/types.ts';
 import { needsAttention, sumPayments } from '@shared/billing.ts';
@@ -6,6 +6,7 @@ import { addDays, addMonths, fmtDay, fmtLong, fmtShort, fmtTime, startOfWeek, we
 import { change, series } from '@shared/metrics.ts';
 import { motivationRecipients } from '@shared/messages.ts';
 import { useStore } from '../data/store';
+import { moveToSheet, phoneOnlyData, setAside } from '../data/phoneData';
 import { IS_SAMPLE } from '../lib/space';
 import { Avatar, HelpButton, Pill, QuickText, Section } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -57,6 +58,7 @@ export function Home() {
         </div>
       </div>
       <h1 className="display">{greeting}, {snap.settings.trainerName}</h1>
+      {repo.mode === 'sheets' && <PhoneDataCard />}
 
       <div className="grid2">
         <div className="stat stat-dark">
@@ -155,6 +157,48 @@ export function Home() {
       </Link>
 
       {texting && <QuickText client={texting} onClose={() => setTexting(null)} />}
+    </div>
+  );
+}
+
+/** Records saved on this phone before it was connected: offer to move them into the Sheet. */
+function PhoneDataCard() {
+  const { snap, repo, reload, toast } = useStore();
+  const [hidden, setHidden] = useState(false);
+  const [busy, setBusy] = useState('');
+  const found = useMemo(() => phoneOnlyData(snap), [snap]);
+  if (!found || hidden) return null;
+  const what = [
+    found.clients && `${found.clients} client${found.clients === 1 ? '' : 's'}`,
+    found.payments && `${found.payments} payment${found.payments === 1 ? '' : 's'}`,
+  ].filter(Boolean).join(' and ') || `${found.total} change${found.total === 1 ? '' : 's'}`;
+  const names = found.local.clients.filter((c) => found.rows.some((r) => r.row.id === c.id)).map((c) => c.firstName).slice(0, 6).join(', ');
+  const move = async () => {
+    setBusy('Moving…');
+    try {
+      await moveToSheet(repo, snap, found, (d, t) => setBusy(`Moving ${d} of ${t}…`));
+      await reload();
+      setHidden(true);
+      toast('Moved to your Google Sheet');
+    } catch (e) {
+      setBusy('');
+      toast(`Couldn't finish: ${(e as Error).message}. Tap Move again; nothing is lost.`);
+      reload();
+    }
+  };
+  return (
+    <div className="card alert-card">
+      <div className="alert-head">
+        <Icon name="alert" size={20} />
+        <span className="grow">
+          <strong>Found {what} saved only on this phone</strong>
+          <span className="small">{names ? `${names}. ` : ''}These were added before this phone was connected, so they aren’t in your Google Sheet yet.</span>
+        </span>
+      </div>
+      <div className="pad stack-sm">
+        <button className="btn btn-block" disabled={!!busy} onClick={move}>{busy || 'Move them to my Google Sheet'}</button>
+        {!busy && <button className="btn btn-outline btn-block" onClick={() => { if (confirm('Leave these off? They’ll stop showing here (a copy stays on this phone).')) { setAside(); setHidden(true); } }}>These were just tests, leave them off</button>}
+      </div>
     </div>
   );
 }
