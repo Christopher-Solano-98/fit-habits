@@ -343,3 +343,9 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 .intake-card { display: flex; flex-direction: column; gap: 12px; }
 .intake-card .parq { margin-top: 0; }
 .header-row > .back { flex: none; }
+
+/* Segmented controls built by hand (e.g. PAR-Q Yes/No) lay out side by side in
+   equal columns; the Seg component sets its own column count. */
+.seg { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+/* Keep logos at their natural shape inside stretched flex columns. */
+.brand-logo { align-self: flex-start; width: auto; max-width: 100%; object-fit: contain; }
