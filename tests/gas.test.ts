@@ -35,6 +35,16 @@ describe('Apps Script backend', () => {
     expect(g.post({ action: 'load', key: 'wrong' }).error).toMatch(/Not connected/);
   });
 
+  it('adds columns from newer versions to a sheet made earlier', () => {
+    const g = setup();
+    const sh = g.sheets.find((x: { name: string }) => x.name === 'clients');
+    const head = sh.rows[0];
+    head.splice(head.indexOf('sessionTimes'), 1); // a sheet from before per-day times
+    sh.rows[0] = head;
+    g.call('put', { table: 'clients', row: client({ sessionTimes: { 1: '8:00 AM', 2: '10:00 AM' } }) });
+    expect(g.call('load').result.clients[0].sessionTimes).toEqual({ 1: '8:00 AM', 2: '10:00 AM' });
+  });
+
   it('round-trips records with the right types, and updates in place', () => {
     const g = setup();
     expect(g.call('load').result.settings).toBeNull();

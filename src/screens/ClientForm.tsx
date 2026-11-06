@@ -25,6 +25,7 @@ export function ClientForm() {
     value: (c[k] as string | null) ?? '',
     onChange: (e: { target: { value: string } }) => set(k, (e.target.value || null) as never),
   });
+  const [perDay, setPerDay] = useState(() => !!existing?.sessionTimes && Object.values(existing.sessionTimes).some((t) => t && t.trim()));
   const toggleDay = (d: number) => set('sessionDays', c.sessionDays.includes(d) ? c.sessionDays.filter((x) => x !== d) : [...c.sessionDays, d]);
 
   // iPhone Safari won't say why a form didn't submit, so validation happens here
@@ -50,7 +51,11 @@ export function ClientForm() {
       document.getElementById(`f-${first}`)?.scrollIntoView({ block: 'center' });
       return toast(Object.keys(found).length === 1 ? found[first] : 'Fix the fields marked in orange.');
     }
-    await save('clients', { ...c, firstName: c.firstName.trim(), lastName: c.lastName.trim(), email: c.email?.trim() || null });
+    // Keep per-day times only for the days they train; an empty set means one time for all days.
+    const times = perDay && c.sessionDays.length > 1
+      ? Object.fromEntries(c.sessionDays.map((d) => [String(d), c.sessionTimes?.[String(d)]?.trim() ?? '']).filter(([, t]) => t))
+      : {};
+    await save('clients', { ...c, firstName: c.firstName.trim(), lastName: c.lastName.trim(), email: c.email?.trim() || null, sessionTimes: Object.keys(times).length ? times : null });
     toast(existing ? 'Saved' : `${c.firstName} added`);
     nav(`/clients/${c.id}`, { replace: true });
   };
@@ -111,10 +116,22 @@ export function ClientForm() {
             <button type="button" key={d} aria-pressed={c.sessionDays.includes(d)} className={c.sessionDays.includes(d) ? 'on' : ''} onClick={() => toggleDay(d)}>{WEEKDAYS_SHORT[d]}</button>
           ))}
         </div>
-        <div className="grid2">
+        {c.sessionDays.length > 1 && (
+          <label className="check-row">
+            <input type="checkbox" checked={perDay} onChange={(e) => setPerDay(e.target.checked)} />
+            Different times on different days
+          </label>
+        )}
+        {perDay && c.sessionDays.length > 1 ? (
+          <div className="grid2">
+            {MON_FIRST.filter((d) => c.sessionDays.includes(d)).map((d) => (
+              <label key={d}>{WEEKDAYS[d]}<input placeholder={c.sessionTime ?? '6:00 AM'} value={c.sessionTimes?.[String(d)] ?? ''} onChange={(e) => set('sessionTimes', { ...(c.sessionTimes ?? {}), [String(d)]: e.target.value })} /></label>
+            ))}
+          </div>
+        ) : (
           <label>Session time<input placeholder="6:00 AM" {...text('sessionTime')} /></label>
-          <label>Start date<input type="date" value={c.startDate} onChange={(e) => set('startDate', e.target.value || today)} /></label>
-        </div>
+        )}
+        <label>Start date<input type="date" value={c.startDate} onChange={(e) => set('startDate', e.target.value || today)} /></label>
       </fieldset>
 
       <fieldset>

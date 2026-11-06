@@ -118,3 +118,17 @@ describe('exercises', () => {
     for (const e of BUILT_IN_EXERCISES) expect(EXERCISE_GROUPS).toContain(e.group);
   });
 });
+
+import { scheduleText, timeOn } from '../supabase/functions/_shared/messages.ts';
+describe('different times on different days', () => {
+  it('shows each group of days with its own time', () => {
+    const c = client({ sessionDays: [1, 2, 3, 4], sessionTime: null, sessionTimes: { 1: '8:00 AM', 3: '8:00 AM', 2: '10:00 AM', 4: '10:00 AM' } });
+    expect(scheduleText(c)).toBe('Mon & Wed · 8:00 AM, Tue & Thu · 10:00 AM');
+    expect(timeOn(c, 2)).toBe('10:00 AM');
+  });
+  it('falls back to the one time when a day has none', () => {
+    const c = client({ sessionDays: [1, 3, 5], sessionTime: '6:00 AM', sessionTimes: { 5: '7:00 AM' } });
+    expect(scheduleText(c)).toBe('Mon & Wed · 6:00 AM, Fri · 7:00 AM');
+    expect(scheduleText(client({ sessionDays: [1, 3, 5], sessionTime: '6:00 AM' }))).toBe('Mon, Wed & Fri · 6:00 AM');
+  });
+});

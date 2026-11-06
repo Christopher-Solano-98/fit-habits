@@ -17,7 +17,7 @@ var PROPS = PropertiesService.getScriptProperties();
 
 // s = text, n = number, b = true/false, j = JSON (lists and objects)
 var TABLES = {
-  clients: { id: 's', firstName: 's', lastName: 's', birthDate: 's', gender: 's', phone: 's', email: 's', address: 's', sessionDays: 'j', sessionTime: 's', rate: 'n', cycle: 's', dueWeekday: 'n', dueDayOfMonth: 'n', channel: 's', medicalCurrent: 's', medicalPast: 's', emergencyName: 's', emergencyPhone: 's', notes: 's', startDate: 's', active: 'b', createdAt: 's' },
+  clients: { id: 's', firstName: 's', lastName: 's', birthDate: 's', gender: 's', phone: 's', email: 's', address: 's', sessionDays: 'j', sessionTime: 's', sessionTimes: 'j', rate: 'n', cycle: 's', dueWeekday: 'n', dueDayOfMonth: 'n', channel: 's', medicalCurrent: 's', medicalPast: 's', emergencyName: 's', emergencyPhone: 's', notes: 's', startDate: 's', active: 'b', createdAt: 's' },
   payments: { id: 's', clientId: 's', amount: 'n', paidOn: 's', note: 's', receiptVia: 's', createdAt: 's' },
   measurements: { id: 's', clientId: 's', takenOn: 's', values: 'j', note: 's', fileId: 's', createdAt: 's' },
   goals: { id: 's', clientId: 's', metric: 's', target: 'n', byDate: 's', createdAt: 's' },
@@ -88,6 +88,7 @@ function doGet() {
 }
 
 function doPost(e) {
+  SHEET_CHECKED_ = {};
   var out;
   try {
     var req = JSON.parse(e.postData.contents);
@@ -130,6 +131,7 @@ function ss_() {
   return SpreadsheetApp.openById(PROPS.getProperty('SHEET_ID'));
 }
 
+var SHEET_CHECKED_ = {};
 function sheet_(table) {
   var ss = ss_();
   var sh = ss.getSheetByName(table);
@@ -140,7 +142,18 @@ function sheet_(table) {
     sh.setFrozenRows(1);
     // Plain text everywhere, so dates and phone numbers aren't reformatted.
     sh.getRange(1, 1, sh.getMaxRows(), cols.length).setNumberFormat('@');
+  } else if (!SHEET_CHECKED_[table]) {
+    // Columns added in later versions go on the end of sheets made earlier.
+    var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+    var missing = cols.filter(function (k) { return head.indexOf(k) < 0; });
+    if (missing.length) {
+      var at = sh.getLastColumn() + 1;
+      if (sh.getMaxColumns() < at + missing.length - 1) sh.insertColumnsAfter(sh.getMaxColumns(), at + missing.length - 1 - sh.getMaxColumns());
+      sh.getRange(1, at, 1, missing.length).setValues([missing]).setFontWeight('bold');
+      sh.getRange(1, at, sh.getMaxRows(), missing.length).setNumberFormat('@');
+    }
   }
+  SHEET_CHECKED_[table] = true;
   return sh;
 }
 

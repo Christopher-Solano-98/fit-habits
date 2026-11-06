@@ -15,6 +15,8 @@ class Sheet {
   getLastRow() { let n = this.rows.length; while (n && this.rows[n - 1].every((v) => v === '')) n--; return n; }
   getLastColumn() { return Math.max(0, ...this.rows.map((r) => { let n = r.length; while (n && r[n - 1] === '') n--; return n; })); }
   getMaxRows() { return Math.max(1000, this.rows.length); }
+  getMaxColumns() { return Math.max(26, this.getLastColumn()); }
+  insertColumnsAfter() {}
   setFrozenRows() {}
   deleteRow(i) { this.rows.splice(i - 1, 1); }
   getRange(r, c, nr, nc) {

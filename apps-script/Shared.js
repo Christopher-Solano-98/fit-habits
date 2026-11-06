@@ -76,6 +76,7 @@ var FH = (() => {
     startOfWeek: () => startOfWeek,
     sumPayments: () => sumPayments,
     telHref: () => telHref,
+    timeOn: () => timeOn,
     toDate: () => toDate,
     toIso: () => toIso,
     todayIso: () => todayIso,
@@ -412,11 +413,25 @@ var FH = (() => {
   }
 
   // supabase/functions/_shared/messages.ts
+  function timeOn(c, wd) {
+    var _a, _b;
+    return ((_b = (_a = c.sessionTimes) == null ? void 0 : _a[String(wd)]) == null ? void 0 : _b.trim()) || c.sessionTime || null;
+  }
+  var dayList = (days) => {
+    const names = days.map((d) => WEEKDAYS_SHORT[d]);
+    return names.length > 1 ? names.slice(0, -1).join(", ") + " & " + names[names.length - 1] : names[0];
+  };
   function scheduleText(c) {
     if (!c.sessionDays.length) return "No set schedule";
-    const days = [...c.sessionDays].sort((a, b2) => (a + 6) % 7 - (b2 + 6) % 7).map((d) => WEEKDAYS_SHORT[d]);
-    const list = days.length > 1 ? days.slice(0, -1).join(", ") + " & " + days[days.length - 1] : days[0];
-    return c.sessionTime ? `${list} \xB7 ${c.sessionTime}` : list;
+    const days = [...c.sessionDays].sort((a, b2) => (a + 6) % 7 - (b2 + 6) % 7);
+    const groups = [];
+    for (const d of days) {
+      const t = timeOn(c, d);
+      const g = groups.find((x) => x.time === t);
+      if (g) g.days.push(d);
+      else groups.push({ time: t, days: [d] });
+    }
+    return groups.map((g) => g.time ? `${dayList(g.days)} \xB7 ${g.time}` : dayList(g.days)).join(", ");
   }
   function fillTemplate(body, c, s, extra = {}) {
     const vars = {

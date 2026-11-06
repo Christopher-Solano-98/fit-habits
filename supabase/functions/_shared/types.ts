@@ -16,6 +16,7 @@ export interface Client {
   address: string | null;
   sessionDays: number[]; // 0 = Sunday … 6 = Saturday
   sessionTime: string | null; // "6:00 AM"
+  sessionTimes?: Record<string, string> | null; // weekday → time, when days have different times
   rate: number;
   cycle: BillingCycle;
   dueWeekday: number; // weekly / biweekly: day of week payment is due

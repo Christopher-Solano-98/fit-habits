@@ -4,7 +4,7 @@ import type { Client } from '@shared/types.ts';
 import { needsAttention, sumPayments } from '@shared/billing.ts';
 import { addDays, addMonths, fmtDay, fmtLong, fmtShort, fmtTime, startOfWeek, weekday, WEEKDAYS } from '@shared/dates.ts';
 import { change, series } from '@shared/metrics.ts';
-import { motivationRecipients } from '@shared/messages.ts';
+import { motivationRecipients, timeOn } from '@shared/messages.ts';
 import { useStore } from '../data/store';
 import { moveToSheet, phoneOnlyData, setAside } from '../data/phoneData';
 import { IS_SAMPLE } from '../lib/space';
@@ -23,7 +23,7 @@ export function Home() {
   const billable = active.filter((c) => status(c).state !== 'none');
   const paid = billable.filter((c) => status(c).state === 'paid');
   const alerts = active.filter((c) => needsAttention(status(c))).sort((a, b) => status(b).daysLate - status(a).daysLate);
-  const sessions = active.filter((c) => c.sessionDays.includes(weekday(today))).sort((a, b) => timeToMinutes(a.sessionTime) - timeToMinutes(b.sessionTime));
+  const sessions = active.filter((c) => c.sessionDays.includes(weekday(today))).sort((a, b) => timeToMinutes(timeOn(a, weekday(today))) - timeToMinutes(timeOn(b, weekday(today))));
 
   const months = snap.settings.scanReminderMonths;
   const scansDue = active
@@ -111,7 +111,7 @@ export function Home() {
           <div className="card">
             {sessions.map((c) => (
               <Link key={c.id} to={`/clients/${c.id}`} className="row row-link">
-                <span className="time">{c.sessionTime ?? '—'}</span>
+                <span className="time">{timeOn(c, weekday(today)) ?? '—'}</span>
                 <span className="grow"><strong>{fullName(c)}</strong></span>
                 <Pill status={status(c)} short />
               </Link>

@@ -1,11 +1,27 @@
 import type { Channel, Client, Payment, Settings } from './types.ts';
 import { fmtLong, WEEKDAYS_SHORT } from './dates.ts';
 
+/** The client's session time on a given weekday (0 = Sunday). */
+export function timeOn(c: Pick<Client, 'sessionTime' | 'sessionTimes'>, wd: number): string | null {
+  return c.sessionTimes?.[String(wd)]?.trim() || c.sessionTime || null;
+}
+
+const dayList = (days: number[]) => {
+  const names = days.map((d) => WEEKDAYS_SHORT[d]);
+  return names.length > 1 ? names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1] : names[0];
+};
+
+/** "Mon, Wed & Fri · 6:00 AM", or "Mon & Wed · 8:00 AM, Tue & Thu · 10:00 AM" when times differ. */
 export function scheduleText(c: Client): string {
   if (!c.sessionDays.length) return 'No set schedule';
-  const days = [...c.sessionDays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => WEEKDAYS_SHORT[d]);
-  const list = days.length > 1 ? days.slice(0, -1).join(', ') + ' & ' + days[days.length - 1] : days[0];
-  return c.sessionTime ? `${list} · ${c.sessionTime}` : list;
+  const days = [...c.sessionDays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+  const groups: { time: string | null; days: number[] }[] = [];
+  for (const d of days) {
+    const t = timeOn(c, d);
+    const g = groups.find((x) => x.time === t);
+    if (g) g.days.push(d); else groups.push({ time: t, days: [d] });
+  }
+  return groups.map((g) => (g.time ? `${dayList(g.days)} · ${g.time}` : dayList(g.days))).join(', ');
 }
 
 export function fillTemplate(body: string, c: Client, s: Pick<Settings, 'businessName' | 'trainerName'>, extra: Record<string, string> = {}): string {
