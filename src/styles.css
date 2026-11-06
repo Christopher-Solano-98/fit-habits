@@ -333,3 +333,7 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 .help-item ol { margin: 0; padding: 0 16px 14px 36px; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); line-height: 1.45; }
 .help-item ol strong { color: var(--ink); }
 .help-tip { margin: 0 16px 14px; padding: 10px 12px; border-radius: 10px; background: var(--green-tint); color: var(--green-ink); font-size: 14px; }
+
+.req { color: #B3261E; font-weight: 700; }
+.field-error { color: var(--warn-ink); font-size: 13px; font-weight: 600; margin-top: -4px; }
+.form input.invalid { border-color: #C2410C !important; box-shadow: 0 0 0 1px #C2410C; background: #FFF8F3 !important; }
