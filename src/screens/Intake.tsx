@@ -12,7 +12,7 @@ import { Brand } from '../components/Brand';
 // data: in cloud mode it talks only to the `intake` Edge Function, which checks
 // the one-time token server-side.
 
-interface Info { firstName: string; business: string; completed: boolean; waiverText?: string }
+interface Info { firstName: string; business: string; completed: boolean; waiverText?: string; trainer?: string }
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -26,7 +26,7 @@ async function loadInfo(token: string, api: string | null): Promise<Info | null>
   const snap = await localRepo().load();
   const req = snap.intakes.find((i) => i.token === token);
   const c = req && snap.clients.find((x) => x.id === req.clientId);
-  return req && c ? { firstName: c.firstName, business: snap.settings.businessName, completed: !!req.completedAt, waiverText: snap.settings.waiverText } : null;
+  return req && c ? { firstName: c.firstName, business: snap.settings.businessName, completed: !!req.completedAt, waiverText: snap.settings.waiverText, trainer: snap.settings.trainerName } : null;
 }
 
 async function submit(token: string, answers: IntakeAnswers, id: File | null, api: string | null): Promise<void> {
@@ -110,7 +110,7 @@ export function Intake() {
       {fromApp && <button type="button" className="back" onClick={() => history.back()}><Icon name="back" /> Back</button>}
       <Brand variant="full" />
       <h1 className="display">Welcome, {info.firstName}</h1>
-      <p className="muted">This takes about 5 minutes. Your answers go only to your trainer and are stored securely.</p>
+      <p className="muted">This takes about 5 minutes. Your answers go only to {info.trainer || 'Tony'} and are stored securely with {info.business || 'Fit Habits'}.</p>
 
       <fieldset>
         <legend>Health questions (PAR-Q+)</legend>

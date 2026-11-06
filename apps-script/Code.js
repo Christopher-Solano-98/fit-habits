@@ -370,7 +370,7 @@ function intakeInfo_(token) {
   if (!r) throw new Error('This link is not valid. Ask your trainer for a new one.');
   var c = readTable_('clients').filter(function (x) { return x.id === r.clientId; })[0];
   var s = getSettings_() || {};
-  return { firstName: c ? c.firstName : '', business: s.businessName || 'Fit Habits', completed: !!r.completedAt, waiverText: s.waiverText || FH.DEFAULT_WAIVER };
+  return { firstName: c ? c.firstName : '', business: s.businessName || 'Fit Habits', completed: !!r.completedAt, waiverText: s.waiverText || FH.DEFAULT_WAIVER, trainer: s.trainerName || '' };
 }
 
 function clip_(v, n) { return typeof v === 'string' ? v.slice(0, n || 2000) : ''; }

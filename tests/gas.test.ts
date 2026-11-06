@@ -92,7 +92,7 @@ describe('Apps Script backend', () => {
     const token = 'b'.repeat(32);
     g.call('put', { table: 'intakes', row: { id: 'i1', clientId: 'c1', token, createdAt: new Date().toISOString(), completedAt: null, answers: null } });
     expect(g.post({ action: 'intakeInfo', token: 'c'.repeat(32) }).error).toMatch(/not valid/);
-    expect(g.post({ action: 'intakeInfo', token }).result).toEqual({ firstName: 'Marcus', business: 'Fit Habits', completed: false, waiverText: expect.stringMatching(/physical training/) });
+    expect(g.post({ action: 'intakeInfo', token }).result).toEqual({ firstName: 'Marcus', business: 'Fit Habits', completed: false, waiverText: expect.stringMatching(/physical training/), trainer: '' });
     const answers = { parq: [false, false, false, false, true, false, false], medicalCurrent: 'Inhaler', medicalPast: '', emergencyName: 'Ana', emergencyPhone: '555', signature: 'Marcus Reed' };
     expect(g.post({ action: 'intakeSubmit', token, answers: { ...answers, parq: [false] } }).error).toMatch(/every question/);
     expect(g.post({ action: 'intakeSubmit', token, answers, id: { mime: 'image/jpeg', data: 'aGk=' } }).result).toBe(true);
