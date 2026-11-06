@@ -359,3 +359,11 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 
 .link-row { width: 100%; background: none; border: 0; color: inherit; text-align: left; padding: 0; font: inherit; }
 .muted-dark { opacity: .7; }
+
+/* Text/email boxes in the dark Friday card match the Day/Time boxes beside them. */
+.card.dark input:not([type=checkbox]):not([type=time]):not([type=date]) {
+  display: block; box-sizing: border-box; width: 100%; min-width: 0; height: 46px;
+  padding: 11px 12px; border-radius: 12px; border: 1px solid; font-size: 16px; line-height: 24px; -webkit-appearance: none; appearance: none;
+}
+.card.dark .grid2 > label { display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+.card.dark select, .card.dark input[type=time] { border-radius: 12px !important; border: 1px solid; }
