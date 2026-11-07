@@ -5,6 +5,7 @@ import type { PayStatus } from '@shared/billing.ts';
 import { fillTemplate, smsHref } from '@shared/messages.ts';
 import { useStore } from '../data/store';
 import { Icon } from './Icon';
+import { intakeMessage, useIntakeLink } from '../data/intakeLink';
 
 export function Pill({ status, short }: { status: PayStatus; short?: boolean }) {
   const text = short && status.state === 'paid' ? 'Paid' : status.label;
@@ -119,6 +120,7 @@ export function QuickText({ client, onClose }: { client: Client; onClose: () => 
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const templates = [...snap.templates].sort((a, b) => a.sort - b.sort);
+  const intake = useIntakeLink(client);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" role="dialog" aria-label={`Text ${client.firstName}`} onClick={(e) => e.stopPropagation()}>
@@ -127,6 +129,12 @@ export function QuickText({ client, onClose }: { client: Client; onClose: () => 
           <span className="small">{client.phone}</span>
         </div>
         {!client.phone && <p className="muted">Add a phone number to {client.firstName}'s profile first.</p>}
+        {client.phone && intake && (
+          <a className="reply reply-intake" href={smsHref(client.phone, intakeMessage(client, snap.settings, intake.url))} onClick={() => setTimeout(onClose, 300)}>
+            <strong>Intake form (PAR-Q + waiver)</strong>
+            <span>{intakeMessage(client, snap.settings, intake.url)}</span>
+          </a>
+        )}
         {client.phone && templates.map((t) => {
           const body = fillTemplate(t.body, client, snap.settings);
           return (

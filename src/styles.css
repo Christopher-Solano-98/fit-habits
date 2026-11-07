@@ -367,3 +367,6 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 }
 .card.dark .grid2 > label { display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
 .card.dark select, .card.dark input[type=time] { border-radius: 12px !important; border: 1px solid; }
+
+.reply-intake { border-left: 3px solid var(--green); }
+.reply-intake span { word-break: break-all; }

@@ -125,7 +125,7 @@ export const HELP: HelpSection[] = [
         id: 'intake',
         q: 'How does a new client fill out the PAR-Q and waiver?',
         steps: [
-          'Open the client → **Files** → **Intake packet** → **Text** or **Email**.',
+          'Tap **Text** on the client (or on Home) and pick **Intake form (PAR-Q + waiver)** at the top. Or open the client → **Files** → **Intake packet** → **Text**, **Email** or **Copy link** (to paste in a DM).',
           'They get a link by text or email (emails come from fit.habits96@gmail.com). On their phone they answer the 7 health questions, add medical history and an emergency contact, take a photo of their ID and sign the waiver by typing their name.',
           'If they’re with you, tap **Fill out here on this phone** and hand them your phone instead.',
         ],

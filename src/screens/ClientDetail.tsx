@@ -9,6 +9,7 @@ import { PARQ_QUESTIONS } from '@shared/parq.ts';
 import { useStore } from '../data/store';
 import { getConnection } from '../data/connection';
 import { nowIso, uid } from '../data/repo';
+import { intakeMessage, useIntakeLink } from '../data/intakeLink';
 import { Avatar, Empty, Header, Pill, QuickText, Seg } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { LineChart } from '../components/LineChart';
@@ -314,26 +315,13 @@ function FilesTab({ c }: { c: Client }) {
     toast('File deleted');
   };
 
-  // Reuses a pending (not yet completed) intake link so text and email point to the same form.
-  const intakeLink = async () => {
-    let token = intake && !intake.completedAt ? intake.token : null;
-    if (!token) {
-      token = uid().replace(/-/g, '');
-      await save('intakes', { id: uid(), clientId: c.id, token, createdAt: nowIso(), completedAt: null, answers: null });
-    }
-    const conn = getConnection();
-    return `${location.origin}${location.pathname}#/intake/${token}${conn ? `?api=${encodeURIComponent(conn.api)}` : ''}`;
-  };
-  const intakeMessage = (link: string) =>
-    `Hi ${c.firstName}, please fill out your ${snap.settings.businessName} intake form before our next session (health questions, medical history, ID and waiver). It takes about 5 minutes: ${link}`;
+  // Text, email, copy and "fill out here" all use the same open link.
+  const link = useIntakeLink(c);
+  const textBody = link ? intakeMessage(c, snap.settings, link.url) : '';
 
-  const sendIntake = async (via: 'text' | 'email') => {
-    const link = await intakeLink();
-    const body = intakeMessage(link);
-    if (via === 'text') {
-      if (c.phone) location.href = smsHref(c.phone, body);
-      return;
-    }
+  const emailIntake = async () => {
+    if (!link) return;
+    const body = textBody;
     const subject = `Your ${snap.settings.businessName} intake form`;
     // Connected: the email goes out automatically from the trainer's Gmail. Otherwise open Mail.
     const sent = await repo.sendNotice({ clientId: c.id, channel: 'email', subject, body: `${body}\n\n- ${snap.settings.trainerName}` });
@@ -343,14 +331,19 @@ function FilesTab({ c }: { c: Client }) {
 
   // Opens the same form the client gets, inside the app, so the client can fill it out
   // on the trainer's phone (and so it can be demoed before the Google account is connected).
-  const fillHere = async () => {
-    let token = intake && !intake.completedAt ? intake.token : null;
-    if (!token) {
-      token = uid().replace(/-/g, '');
-      await save('intakes', { id: uid(), clientId: c.id, token, createdAt: nowIso(), completedAt: null, answers: null });
-    }
+  const fillHere = () => {
+    if (!link) return;
     const conn = getConnection();
-    nav(`/intake/${token}?from=app${conn ? `&api=${encodeURIComponent(conn.api)}` : ''}`);
+    nav(`/intake/${link.token}?from=app${conn ? `&api=${encodeURIComponent(conn.api)}` : ''}`);
+  };
+  const copyLink = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link.url);
+      toast('Link copied. Paste it in any text or DM.');
+    } catch {
+      prompt('Copy this link:', link.url);
+    }
   };
 
   return (
@@ -360,7 +353,7 @@ function FilesTab({ c }: { c: Client }) {
           <span className="grow">
             <strong>Intake packet</strong>
             <span className="small">
-              {!intake ? 'Not sent yet' : intake.completedAt ? `Completed ${fmtLong(intake.completedAt.slice(0, 10))}` : `Sent ${fmtShort(intake.createdAt.slice(0, 10))}, waiting on ${c.firstName}`}
+              {intake?.completedAt ? `Completed ${fmtLong(intake.completedAt.slice(0, 10))}` : `PAR-Q, medical history, ID and waiver. Waiting on ${c.firstName} to fill it out.`}
             </span>
           </span>
           {intake?.completedAt && <button className="btn-sm btn-outline" onClick={() => save('intakes', { id: uid(), clientId: c.id, token: uid().replace(/-/g, ''), createdAt: nowIso(), completedAt: null, answers: null })}>New form</button>}
@@ -368,9 +361,12 @@ function FilesTab({ c }: { c: Client }) {
         {!intake?.completedAt && (
           <>
             <div className="grid2">
-              <button className="btn" disabled={!c.phone} onClick={() => sendIntake('text')}><Icon name="chat" size={16} /> Text</button>
-              <button className="btn" disabled={!c.email} onClick={() => sendIntake('email')}><Icon name="mail" size={16} /> Email</button>
+              {c.phone && link
+                ? <a className="btn" href={smsHref(c.phone, textBody)}><Icon name="chat" size={16} /> Text</a>
+                : <button className="btn" disabled><Icon name="chat" size={16} /> Text</button>}
+              <button className="btn" disabled={!c.email || !link} onClick={emailIntake}><Icon name="mail" size={16} /> Email</button>
             </div>
+            <button className="btn btn-outline btn-block" disabled={!link} onClick={copyLink}>Copy link</button>
             {(!c.phone || !c.email) && <p className="small">{!c.phone && !c.email ? `Add ${c.firstName}'s phone or email (Edit) to send it, or fill it out here.` : !c.phone ? 'Add a phone number (Edit) to text it.' : 'Add an email (Edit) to email it.'}</p>}
             <button className="btn btn-outline btn-block" onClick={fillHere}>Fill out here on this phone</button>
           </>
