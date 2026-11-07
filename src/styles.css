@@ -370,3 +370,13 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 
 .reply-intake { border-left: 3px solid var(--green); }
 .reply-intake span { word-break: break-all; }
+
+/* Page headers with buttons (Clients: ?, Workouts, Add) fit beside the title on a phone. */
+.header-text { min-width: 0; }
+.header-actions { align-items: center; }
+.header-actions .btn { min-height: 40px; padding: 0 12px; font-size: 15px; gap: 4px; border-radius: 12px; }
+.header-actions .icon-btn { width: 40px; height: 40px; }
+.header-row { flex-wrap: wrap; row-gap: 10px; }
+.header-text { flex: 1 1 96px; }
+.header-row > .header-actions { margin-left: auto; }
+.search svg { flex: none; }

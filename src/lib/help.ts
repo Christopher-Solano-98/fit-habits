@@ -21,7 +21,7 @@ export const HELP: HelpSection[] = [
         id: 'add-client',
         q: 'How do I add a client?',
         steps: [
-          'Tap **Clients**, then **Add client**.',
+          'Tap **Clients**, then **+ Add**.',
           'Fill in their name, birthday, phone, email and address.',
           'Pick their session days and time. Different times on different days (like Mon/Wed 8 AM, Tue/Thu 10 AM)? Check **Different times on different days** and enter a time for each day.',
           'Under **Payment**, choose **Weekly**, **2 weeks**, **Monthly** or **Per session**, enter the rate and the day it’s due.',

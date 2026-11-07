@@ -21,7 +21,7 @@ export function Clients() {
         title="Clients"
         sub={`${activeCount} active`}
         help="add-client"
-        action={<div className="header-actions"><Link to="/workouts" className="btn btn-outline">Workouts</Link><Link to="/clients/new" className="btn btn-dark"><Icon name="plus" size={16} stroke={2.4} /> Add client</Link></div>}
+        action={<div className="header-actions"><Link to="/workouts" className="btn btn-outline">Workouts</Link><Link to="/clients/new" className="btn btn-dark" aria-label="Add client"><Icon name="plus" size={16} stroke={2.4} /> Add</Link></div>}
       />
       <label className="search">
         <Icon name="search" size={16} />
@@ -29,7 +29,7 @@ export function Clients() {
         <input type="search" placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
       </label>
       {snap.clients.some((c) => !c.active) && <Seg value={show} options={[['active', 'Active'], ['all', 'All']]} onChange={setShow} />}
-      {list.length === 0 && <Empty>{snap.clients.length ? 'No one matches that search.' : 'No clients yet. Tap "Add client" to load the people you train.'}</Empty>}
+      {list.length === 0 && <Empty>{snap.clients.length ? 'No one matches that search.' : 'No clients yet. Tap "+ Add" to load the people you train.'}</Empty>}
       <div className="stack">
         {list.map((c) => (
           <Link key={c.id} to={`/clients/${c.id}`} className="card row row-link client-row">
