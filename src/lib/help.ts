@@ -126,7 +126,7 @@ export const HELP: HelpSection[] = [
         q: 'How does a new client fill out the PAR-Q and waiver?',
         steps: [
           'Tap **Text** on the client (or on Home) and pick **Intake form (PAR-Q + waiver)** at the top. Or open the client → **Files** → **Intake packet** → **Text**, **Email** or **Copy link** (to paste in a DM).',
-          'They get a link by text or email (emails come from fit.habits96@gmail.com). On their phone they answer the 7 health questions, add medical history and an emergency contact, take a photo of their ID and sign the waiver by typing their name.',
+          'They get a link by text or email (emails come from fit.habits96@gmail.com). On their phone they fill out your Fit Habits PAR-Q (personal info, 8 health and lifestyle questions including their fitness goals), add an emergency contact, take a photo of their ID and sign by typing their name.',
           'If they’re with you, tap **Fill out here on this phone** and hand them your phone instead.',
         ],
       },
@@ -137,7 +137,7 @@ export const HELP: HelpSection[] = [
           'Open the client → **Files**.',
           'The intake card shows **Completed** and flags any “Yes” health answer in orange. Follow up on those before training hard.',
           'Their **Signed waiver** and **Photo ID** are listed below. Tap to open.',
-          'Their medical history and emergency contact also show on **Info**.',
+          'Their health notes, emergency contact and goals also show on **Info**. Birthday, phone and address fill in if you left them blank.',
         ],
       },
       {

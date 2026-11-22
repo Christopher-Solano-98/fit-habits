@@ -395,12 +395,8 @@ function intakeSubmit_(req) {
   var r = findIntake_(req.token);
   if (!r) throw new Error('This link has expired. Ask your trainer for a new one.');
   if (r.completedAt) throw new Error('Already submitted');
-  var a = req.answers || {};
-  var parq = Array.isArray(a.parq) ? a.parq.map(Boolean).slice(0, FH.PARQ_QUESTIONS.length) : [];
-  if (parq.length !== FH.PARQ_QUESTIONS.length || !clip_(a.signature, 200).trim()) throw new Error('Please answer every question and sign.');
-  var answers = { parq: parq, medicalCurrent: clip_(a.medicalCurrent), medicalPast: clip_(a.medicalPast), emergencyName: clip_(a.emergencyName, 200), emergencyPhone: clip_(a.emergencyPhone, 50), signature: clip_(a.signature, 200), signedAt: new Date().toISOString() };
   var settings = getSettings_() || {};
-  answers.waiverText = settings.waiverText || FH.DEFAULT_WAIVER;
+  var answers = FH.normalizeAnswers(req.answers || {}, { business: settings.businessName || 'Fit Habits', waiverText: settings.waiverText || FH.DEFAULT_WAIVER, now: new Date().toISOString() });
   if (req.id && req.id.data) {
     var idMime = req.id.mime || '';
     if (!(/^image\//.test(idMime) || idMime === 'application/pdf') || req.id.data.length > 14e6) throw new Error('Your ID must be a photo or PDF under 10 MB');
@@ -414,10 +410,7 @@ function intakeSubmit_(req) {
   var clientName = c ? (c.firstName + ' ' + c.lastName).trim() : answers.signature;
   var html = FH.signedWaiverHtml({ business: settings.businessName || 'Fit Habits', clientName: clientName, waiverText: answers.waiverText, answers: answers });
   saveBlob_(r.clientId, 'waiver', 'Signed waiver - ' + clientName + ' - ' + answers.signedAt.slice(0, 10) + '.html', 'text/html', Utilities.base64Encode(html, Utilities.Charset.UTF_8));
-  if (c) {
-    ['medicalCurrent', 'medicalPast', 'emergencyName', 'emergencyPhone'].forEach(function (k) { if (answers[k]) c[k] = answers[k]; });
-    put_('clients', c);
-  }
+  if (c) put_('clients', FH.applyIntake(c, answers));
   return true;
 }
 

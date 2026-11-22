@@ -5,7 +5,7 @@ import { addMonths, ageOn, fmtLong, fmtShort } from '@shared/dates.ts';
 import { change, changeWith, fmtValue, fmtWith, goalProgress, isMetric, metric, METRICS, parseWith, series, type TrackDef } from '@shared/metrics.ts';
 import { exerciseDef, exerciseSeries, fmtLog, trackDef, trackedExercises, trackSeries } from '@shared/exercises.ts';
 import { mailtoHref, scheduleText, smsHref, telHref } from '@shared/messages.ts';
-import { PARQ_QUESTIONS } from '@shared/parq.ts';
+import { goalsFromResponses, intakeFlags, intakeRows } from '@shared/intakeForm.ts';
 import { useStore } from '../data/store';
 import { getConnection } from '../data/connection';
 import { nowIso, uid } from '../data/repo';
@@ -373,10 +373,11 @@ function FilesTab({ c }: { c: Client }) {
         )}
         {intake?.answers && (
           <div className="parq">
-            {intake.answers.parq.some(Boolean)
-              ? <p className="warn-text"><Icon name="alert" size={16} /> Answered "Yes" to {intake.answers.parq.filter(Boolean).length} PAR-Q question(s). Get the PAR-Q+ follow-up pages or a doctor's clearance before training hard.</p>
-              : <p className="ok"><Icon name="check" size={16} /> All PAR-Q answers "No"</p>}
-            {PARQ_QUESTIONS.map((q, i) => intake.answers!.parq[i] && <p className="small" key={i}>Yes: {q}</p>)}
+            {intakeFlags(intake.answers).length
+              ? <p className="warn-text"><Icon name="alert" size={16} /> Answered "Yes" to {intakeFlags(intake.answers).length} health question{intakeFlags(intake.answers).length > 1 ? 's' : ''}. Look these over (and get a doctor's OK if needed) before training hard.</p>
+              : <p className="ok"><Icon name="check" size={16} /> All health answers "No"</p>}
+            {intakeFlags(intake.answers).map((r) => <p className="small" key={r.id}>Yes: {r.q}{r.detail ? <><br /><strong>{r.detail}</strong></> : null}</p>)}
+            {intake.answers.responses && goalsFromResponses(intake.answers.responses) && <p className="small">Goals: <strong>{goalsFromResponses(intake.answers.responses)}</strong></p>}
             <p className="small">Signed by {intake.answers.signature} on {fmtLong(intake.answers.signedAt.slice(0, 10))}</p>
           </div>
         )}
@@ -401,8 +402,8 @@ function FilesTab({ c }: { c: Client }) {
                     {k === 'parq' ? (
                       <>
                         <span>PAR-Q answers</span>
-                        <span className={`small${fromIntake.answers!.parq.some(Boolean) ? ' warn-text' : ''}`}>
-                          {fmtShort(fromIntake.completedAt!.slice(0, 10))} · {fromIntake.answers!.parq.some(Boolean) ? `${fromIntake.answers!.parq.filter(Boolean).length} "Yes" answer${fromIntake.answers!.parq.filter(Boolean).length > 1 ? 's' : ''}` : 'All "No"'}
+                        <span className={`small${intakeFlags(fromIntake.answers!).length ? ' warn-text' : ''}`}>
+                          {fmtShort(fromIntake.completedAt!.slice(0, 10))} · {intakeFlags(fromIntake.answers!).length ? `${intakeFlags(fromIntake.answers!).length} "Yes" answer${intakeFlags(fromIntake.answers!).length > 1 ? 's' : ''}` : 'All "No"'}
                         </span>
                       </>
                     ) : (
@@ -433,18 +434,37 @@ function FilesTab({ c }: { c: Client }) {
 
 /** What the client submitted on the intake form: PAR-Q answers, medical history, emergency contact, signature. */
 function IntakeAnswersSheet({ c, answers, completedAt, focus, onClose }: { c: Client; answers: IntakeAnswers; completedAt: string; focus: 'parq' | 'medical'; onClose: () => void }) {
-  const yes = answers.parq.filter(Boolean).length;
+  const rows = intakeRows(answers);
+  const yes = rows.filter((r) => r.flag).length;
+  const p = answers.profile ?? {};
   const parq = (
     <section className="stack-sm">
-      <strong>PAR-Q health questions</strong>
-      {yes > 0 ? <p className="warn-text small"><Icon name="alert" size={14} /> {yes} "Yes" answer{yes > 1 ? 's' : ''}. Get the PAR-Q+ follow-up pages or a doctor's clearance before training hard.</p> : <p className="ok small"><Icon name="check" size={14} /> All answers "No"</p>}
+      <strong>{answers.responses ? 'PAR-Q' : 'PAR-Q+ health questions'}</strong>
+      {yes > 0 ? <p className="warn-text small"><Icon name="alert" size={14} /> {yes} "Yes" answer{yes > 1 ? 's' : ''}. Look these over (and get a doctor's OK if needed) before training hard.</p> : <p className="ok small"><Icon name="check" size={14} /> All health answers "No"</p>}
       <div className="card">
-        {PARQ_QUESTIONS.map((q, i) => (
-          <div className="row parq-row" key={i}>
-            <span className="grow small">{i + 1}. {q}</span>
-            <strong className={answers.parq[i] ? 'warn-text' : ''}>{answers.parq[i] ? 'Yes' : 'No'}</strong>
-          </div>
+        {rows.map((r, i) => (
+          r.answer.length > 12 ? (
+            <div className="row parq-row parq-long" key={r.id}>
+              <span className="grow small">{i + 1}. {r.q}<br /><strong className="parq-text">{r.answer || '—'}</strong></span>
+            </div>
+          ) : (
+            <div className="row parq-row" key={r.id}>
+              <span className="grow small">{i + 1}. {r.q}{r.detail && <><br /><strong className="warn-text">{r.detail}</strong></>}</span>
+              <strong className={r.flag ? 'warn-text' : ''}>{r.answer || '—'}</strong>
+            </div>
+          )
         ))}
+      </div>
+    </section>
+  );
+  const personal = (p.birthDate || p.gender || p.phone || p.address) && (
+    <section className="stack-sm">
+      <strong>Personal information</strong>
+      <div className="card">
+        {p.birthDate && <div className="kv"><span>Birthday</span><span>{fmtLong(p.birthDate)}</span></div>}
+        {p.gender && <div className="kv"><span>Gender</span><span>{p.gender}</span></div>}
+        {p.phone && <div className="kv"><span>Phone</span><span>{p.phone}</span></div>}
+        {p.address && <div className="kv"><span>Address</span><span>{p.address}</span></div>}
       </div>
     </section>
   );
@@ -462,7 +482,7 @@ function IntakeAnswersSheet({ c, answers, completedAt, focus, onClose }: { c: Cl
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet sheet-tall" role="dialog" aria-label="Intake answers" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head"><strong>{c.firstName}'s intake</strong><span className="small">{fmtLong(completedAt.slice(0, 10))}</span></div>
-        {focus === 'parq' ? <>{parq}{medical}</> : <>{medical}{parq}</>}
+        {focus === 'parq' ? <>{parq}{medical}{personal}</> : <>{medical}{parq}{personal}</>}
         <p className="small">Signed by {answers.signature} on {fmtLong(answers.signedAt.slice(0, 10))}. The full signed copy is under Waiver.</p>
         <button className="btn btn-block" onClick={onClose}>Done</button>
       </div>

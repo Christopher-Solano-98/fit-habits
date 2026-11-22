@@ -2,7 +2,7 @@
 // GET  ?token=…  → first name + business name (nothing else is exposed)
 // POST multipart (token, answers JSON, optional id photo) → saves the form.
 import type { IntakeAnswers } from '../_shared/types.ts';
-import { PARQ_QUESTIONS } from '../_shared/parq.ts';
+import { normalizeAnswers } from '../_shared/intakeForm.ts';
 import { admin, cors, json } from '../_lib/db.ts';
 
 const MAX_AGE_DAYS = 21;
@@ -43,14 +43,12 @@ Deno.serve(async (req) => {
 
   let raw: Record<string, unknown>;
   try { raw = JSON.parse(String(form.get('answers') ?? '{}')); } catch { return json({ error: 'bad answers' }, 400); }
-  const parq = Array.isArray(raw.parq) ? raw.parq.map(Boolean).slice(0, PARQ_QUESTIONS.length) : [];
-  if (parq.length !== PARQ_QUESTIONS.length || !clip(raw.signature, 200).trim()) return json({ error: 'Please answer every question and sign.' }, 400);
-  const answers: IntakeAnswers = {
-    parq,
-    medicalCurrent: clip(raw.medicalCurrent), medicalPast: clip(raw.medicalPast),
-    emergencyName: clip(raw.emergencyName, 200), emergencyPhone: clip(raw.emergencyPhone, 50),
-    signature: clip(raw.signature, 200), signedAt: new Date().toISOString(),
-  };
+  let answers: IntakeAnswers;
+  try {
+    answers = normalizeAnswers(raw, { business: 'Fit Habits', waiverText: '', now: new Date().toISOString() });
+  } catch (e) {
+    return json({ error: (e as Error).message }, 400);
+  }
 
   const id = form.get('id');
   if (id instanceof File && id.size > 0) {

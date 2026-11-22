@@ -7,3 +7,4 @@ export * from '../supabase/functions/_shared/exercises.ts';
 export * from '../supabase/functions/_shared/messages.ts';
 export { PARQ_QUESTIONS } from '../supabase/functions/_shared/parq.ts';
 export { DEFAULT_WAIVER, signedWaiverHtml } from '../supabase/functions/_shared/waiver.ts';
+export { applyIntake, buildResponses, intakeRows, INTAKE_FORM_ID, normalizeAnswers } from '../supabase/functions/_shared/intakeForm.ts';

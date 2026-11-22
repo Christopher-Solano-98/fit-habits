@@ -380,3 +380,11 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 .header-text { flex: 1 1 96px; }
 .header-row > .header-actions { margin-left: auto; }
 .search svg { flex: none; }
+
+.parq-text { display: block; margin-top: 4px; font-weight: 600; color: var(--ink); }
+
+.intake-title { font-family: var(--display); font-weight: 800; font-size: 20px; margin: 4px 0 0; }
+.choice-list { display: flex; flex-direction: column; gap: 8px; }
+.choice-list button { min-height: 46px; padding: 10px 14px; border-radius: 12px; border: 1px solid #D8D5CC; background: var(--card); text-align: left; font-size: 15px; color: var(--ink); }
+.choice-list button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.consent { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }

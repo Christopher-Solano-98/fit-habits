@@ -85,7 +85,7 @@ export function ClientForm() {
           <label>Birthday<input type="date" {...text('birthDate')} /></label>
           <label>Gender
             <select {...text('gender')}>
-              <option value="">—</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Prefer not to say</option>
+              <option value="">—</option><option>Male</option><option>Female</option><option>Other</option><option>Non-binary</option><option>Prefer not to say</option>
             </select>
           </label>
         </div>

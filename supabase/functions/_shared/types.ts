@@ -114,8 +114,20 @@ export interface Motivation {
   createdAt: string;
 }
 
+export interface IntakeResponse {
+  id: string;
+  q: string; // the question as it was asked
+  answer: string; // "Yes" / "No", the chosen option, or free text
+  detail?: string; // "If yes, please specify"
+  flag: boolean; // a "Yes" the trainer should look at before training hard
+}
+
 export interface IntakeAnswers {
-  parq: boolean[]; // one per PARQ_QUESTIONS entry, true = "Yes"
+  form?: string; // INTAKE_FORM_ID; absent on forms filled out before Nov 2026
+  responses?: IntakeResponse[]; // Fit Habits PAR-Q
+  parq?: boolean[]; // older forms: one per PARQ_QUESTIONS entry, true = "Yes"
+  profile?: { birthDate?: string; gender?: string; phone?: string; address?: string };
+  consent?: string[]; // the statements they agreed to
   medicalCurrent: string;
   medicalPast: string;
   emergencyName: string;

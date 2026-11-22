@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import type { IntakeAnswers } from '@shared/types.ts';
-import { PARQ_QUESTIONS, PARQ_SOURCE } from '@shared/parq.ts';
+import { applyIntake, buildResponses, INTAKE_CONSENT, INTAKE_GENDERS, INTAKE_QUESTIONS, normalizeAnswers, type IntakeRaw } from '@shared/intakeForm.ts';
 import { DEFAULT_WAIVER, signedWaiverHtml } from '@shared/waiver.ts';
 import { localRepo } from '../data/local';
 import { fileToBase64, gasCall } from '../data/connection';
@@ -29,7 +29,10 @@ async function loadInfo(token: string, api: string | null): Promise<Info | null>
   return req && c ? { firstName: c.firstName, business: snap.settings.businessName, completed: !!req.completedAt, waiverText: snap.settings.waiverText, trainer: snap.settings.trainerName } : null;
 }
 
-async function submit(token: string, answers: IntakeAnswers, id: File | null, api: string | null): Promise<void> {
+interface Sent { responses: IntakeRaw; profile: IntakeAnswers['profile']; emergencyName: string; emergencyPhone: string; signature: string; waiverText: string }
+
+async function submit(token: string, sent: Sent, id: File | null, api: string | null): Promise<void> {
+  const answers = sent as unknown as Record<string, unknown>;
   if (api) {
     await gasCall(api, { action: 'intakeSubmit', token, answers, id: id ? await fileToBase64(id) : null });
     return;
@@ -48,11 +51,12 @@ async function submit(token: string, answers: IntakeAnswers, id: File | null, ap
   const req = snap.intakes.find((i) => i.token === token)!;
   const c = snap.clients.find((x) => x.id === req.clientId)!;
   if (id) await repo.uploadFile(c.id, 'id', id);
+  const done = normalizeAnswers(answers, { business: snap.settings.businessName, waiverText: snap.settings.waiverText || DEFAULT_WAIVER, now: new Date().toISOString() });
   const name = `${c.firstName} ${c.lastName}`.trim();
-  const html = signedWaiverHtml({ business: snap.settings.businessName, clientName: name, waiverText: answers.waiverText ?? DEFAULT_WAIVER, answers });
-  await repo.uploadFile(c.id, 'waiver', new File([html], `Signed waiver - ${name} - ${answers.signedAt.slice(0, 10)}.html`, { type: 'text/html' }));
-  await repo.put('intakes', { ...req, completedAt: new Date().toISOString(), answers });
-  await repo.put('clients', { ...c, medicalCurrent: answers.medicalCurrent || c.medicalCurrent, medicalPast: answers.medicalPast || c.medicalPast, emergencyName: answers.emergencyName || c.emergencyName, emergencyPhone: answers.emergencyPhone || c.emergencyPhone });
+  const html = signedWaiverHtml({ business: snap.settings.businessName, clientName: name, waiverText: done.waiverText ?? DEFAULT_WAIVER, answers: done });
+  await repo.uploadFile(c.id, 'waiver', new File([html], `Signed waiver - ${name} - ${done.signedAt.slice(0, 10)}.html`, { type: 'text/html' }));
+  await repo.put('intakes', { ...req, completedAt: new Date().toISOString(), answers: done });
+  await repo.put('clients', applyIntake(c, done));
 }
 
 export function Intake() {
@@ -63,8 +67,9 @@ export function Intake() {
   // Opened from the trainer's app ("Fill out on this phone") rather than a texted link.
   const fromApp = params.get('from') === 'app';
   const [info, setInfo] = useState<Info | null | undefined>(undefined);
-  const [parq, setParq] = useState<(boolean | null)[]>(PARQ_QUESTIONS.map(() => null));
-  const [f, setF] = useState({ medicalCurrent: '', medicalPast: '', emergencyName: '', emergencyPhone: '', signature: '' });
+  const [resp, setResp] = useState<IntakeRaw>({});
+  const [profile, setProfile] = useState({ birthDate: '', gender: '', phone: '', address: '' });
+  const [f, setF] = useState({ emergencyName: '', emergencyPhone: '', signature: '' });
   const [agree, setAgree] = useState(false);
   const [idFile, setIdFile] = useState<File | null>(null);
   const [err, setErr] = useState('');
@@ -88,14 +93,21 @@ export function Intake() {
   }
 
   const waiverText = info.waiverText || DEFAULT_WAIVER;
+  const business = info.business || 'Fit Habits';
+  const consent = INTAKE_CONSENT(business);
+  const setAnswer = (id: string, patch: { answer?: string; detail?: string }) => setResp((r) => ({ ...r, [id]: { ...r[id], ...patch } }));
 
   const go = async (e: FormEvent) => {
     e.preventDefault();
-    if (parq.some((a) => a === null)) return setErr('Please answer every health question.');
-    if (!agree || !f.signature.trim()) return setErr('Please read the waiver, check the box and type your full name to sign.');
+    try {
+      buildResponses(resp);
+    } catch (x) {
+      return setErr((x as Error).message);
+    }
+    if (!agree || !f.signature.trim()) return setErr('Please read the consent and waiver, check the box and type your full name to sign.');
     setErr(''); setBusy(true);
     try {
-      await submit(token!, { ...f, parq: parq as boolean[], signedAt: new Date().toISOString(), waiverText }, idFile, api);
+      await submit(token!, { ...f, responses: resp, profile, waiverText }, idFile, api);
       setSent(true);
     } catch (x) {
       setErr((x as Error).message);
@@ -112,26 +124,56 @@ export function Intake() {
       <h1 className="display">Welcome, {info.firstName}</h1>
       <p className="muted">This takes about 5 minutes. Your answers go only to {info.trainer || 'Tony'} and are stored securely with {info.business || 'Fit Habits'}.</p>
 
-      <fieldset>
-        <legend>Health questions (PAR-Q+)</legend>
-        {PARQ_QUESTIONS.map((q, i) => (
-          <div className="parq-q" key={i}>
-            <p>{i + 1}. {q}</p>
-            <div className="seg">
-              {[true, false].map((v) => (
-                <button type="button" key={String(v)} aria-pressed={parq[i] === v} className={parq[i] === v ? 'on' : ''} onClick={() => setParq(parq.map((a, j) => (j === i ? v : a)))}>{v ? 'Yes' : 'No'}</button>
-              ))}
-            </div>
-          </div>
-        ))}
-        {parq.some((a) => a === true) && <p className="warn-text small">You answered "Yes" to at least one question. That's OK. Your trainer will follow up with the rest of the <a href={PARQ_SOURCE} target="_blank" rel="noreferrer">PAR-Q+</a> before you start, and you may need a note from your doctor.</p>}
-      </fieldset>
+      <h2 className="intake-title">{business} (PAR-Q)</h2>
 
       <fieldset>
-        <legend>Medical history</legend>
-        <label>Current conditions, injuries or medications<textarea rows={2} {...field('medicalCurrent')} /></label>
-        <label>Past injuries, surgeries or conditions<textarea rows={2} {...field('medicalPast')} /></label>
+        <legend>Personal information</legend>
+        <div className="grid2">
+          <label>Date of birth<input type="date" value={profile.birthDate} onChange={(e) => setProfile({ ...profile, birthDate: e.target.value })} /></label>
+          <label>Contact number<input type="tel" autoComplete="tel" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} /></label>
+        </div>
+        <div className="parq-q">
+          <p>Gender</p>
+          <div className="seg">
+            {INTAKE_GENDERS.map((g) => <button type="button" key={g} aria-pressed={profile.gender === g} className={profile.gender === g ? 'on' : ''} onClick={() => setProfile({ ...profile, gender: g })}>{g}</button>)}
+          </div>
+        </div>
+        <label>Address<input autoComplete="street-address" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })} /></label>
       </fieldset>
+
+      {[...new Set(INTAKE_QUESTIONS.map((q) => q.section))].map((section) => (
+        <fieldset key={section}>
+          <legend>{section}</legend>
+          {INTAKE_QUESTIONS.map((q, i) => q.section === section && (
+            <div className="parq-q" key={q.id}>
+              <p>{i + 1}. {q.q}</p>
+              {q.kind === 'yesno' && (
+                <>
+                  <div className="seg">
+                    {['Yes', 'No'].map((v) => (
+                      <button type="button" key={v} aria-pressed={resp[q.id]?.answer === v} className={resp[q.id]?.answer === v ? 'on' : ''} onClick={() => setAnswer(q.id, { answer: v })}>{v}</button>
+                    ))}
+                  </div>
+                  {q.detail && resp[q.id]?.answer === 'Yes' && (
+                    <label>{q.detail}<textarea rows={2} value={resp[q.id]?.detail ?? ''} onChange={(e) => setAnswer(q.id, { detail: e.target.value })} /></label>
+                  )}
+                </>
+              )}
+              {q.kind === 'choice' && (
+                <div className="choice-list">
+                  {q.options.map((o) => (
+                    <button type="button" key={o} aria-pressed={resp[q.id]?.answer === o} className={resp[q.id]?.answer === o ? 'on' : ''} onClick={() => setAnswer(q.id, { answer: o })}>{o}</button>
+                  ))}
+                </div>
+              )}
+              {q.kind === 'text' && (
+                <textarea rows={3} placeholder={q.placeholder} value={resp[q.id]?.answer ?? ''} onChange={(e) => setAnswer(q.id, { answer: e.target.value })} />
+              )}
+            </div>
+          ))}
+        </fieldset>
+      ))}
+      {Object.values(resp).some((r) => r?.answer === 'Yes') && <p className="warn-text small">You answered "Yes" to at least one question. That's OK. {info.trainer || 'Your trainer'} will go over it with you before you start, and you may need a note from your doctor.</p>}
 
       <fieldset>
         <legend>Emergency contact</legend>
@@ -151,9 +193,10 @@ export function Intake() {
       </fieldset>
 
       <fieldset>
-        <legend>Waiver</legend>
+        <legend>Consent and waiver</legend>
+        <ul className="small consent">{consent.map((t) => <li key={t}>{t}</li>)}</ul>
         <div className="small waiver">{waiverText.split(/\n{2,}/).map((para, i) => <p key={i}>{para}</p>)}</div>
-        <label className="check-row"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I have read and agree to the waiver</label>
+        <label className="check-row"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I agree to the statements above and the waiver</label>
         <label>Type your full name to sign<input {...field('signature')} autoComplete="name" /></label>
       </fieldset>
 

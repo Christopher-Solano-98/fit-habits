@@ -25,6 +25,7 @@ var FH = (() => {
     BUILT_IN_EXERCISES: () => BUILT_IN_EXERCISES,
     DEFAULT_WAIVER: () => DEFAULT_WAIVER,
     EXERCISE_GROUPS: () => EXERCISE_GROUPS,
+    INTAKE_FORM_ID: () => INTAKE_FORM_ID,
     KINDS: () => KINDS,
     METRICS: () => METRICS,
     METRIC_GROUPS: () => METRIC_GROUPS,
@@ -35,6 +36,8 @@ var FH = (() => {
     addMonths: () => addMonths,
     ageOn: () => ageOn,
     allExercises: () => allExercises,
+    applyIntake: () => applyIntake,
+    buildResponses: () => buildResponses,
     change: () => change,
     changeWith: () => changeWith,
     currentPeriod: () => currentPeriod,
@@ -56,6 +59,7 @@ var FH = (() => {
     fmtWith: () => fmtWith,
     goalProgress: () => goalProgress,
     inRange: () => inRange,
+    intakeRows: () => intakeRows,
     isMetric: () => isMetric,
     mailtoHref: () => mailtoHref,
     metric: () => metric,
@@ -63,6 +67,7 @@ var FH = (() => {
     motivationReach: () => motivationReach,
     motivationRecipients: () => motivationRecipients,
     needsAttention: () => needsAttention,
+    normalizeAnswers: () => normalizeAnswers,
     parseValue: () => parseValue,
     parseWith: () => parseWith,
     payStatus: () => payStatus,
@@ -509,22 +514,129 @@ var FH = (() => {
     "Has your doctor ever said that you should only do medically supervised physical activity?"
   ];
 
+  // supabase/functions/_shared/intakeForm.ts
+  var INTAKE_FORM_ID = "fit-habits-parq-1";
+  var INTAKE_QUESTIONS = [
+    { id: "conditions", section: "Medical history & current health status", kind: "yesno", q: "Do you have any current or past medical conditions? (e.g., heart disease, hypertension, diabetes, asthma, etc.)", detail: "If yes, please specify" },
+    { id: "medications", section: "Medical history & current health status", kind: "yesno", q: "Are you currently on any medication or supplements?", detail: "If yes, please specify" },
+    { id: "injuries", section: "Medical history & current health status", kind: "yesno", q: "Do you have any injuries or physical limitations?", detail: "If yes, please specify" },
+    { id: "surgeries", section: "Medical history & current health status", kind: "yesno", q: "Have you had any surgeries recently?", detail: "If yes, please specify" },
+    { id: "activity", section: "Lifestyle & activity level", kind: "choice", q: "How would you describe your current activity level?", options: ["Sedentary (little or no exercise)", "Light activity (walking, light household chores)", "Moderate activity (regular exercise, sports)", "Highly active (professional athlete, intense training)"] },
+    { id: "pain", section: "Lifestyle & activity level", kind: "yesno", q: "Do you experience any pain or discomfort during physical activity?", detail: "If yes, please describe" },
+    { id: "pregnant", section: "Exercise readiness", kind: "yesno", q: "Are you pregnant or trying to become pregnant?" },
+    { id: "goals", section: "Exercise readiness", kind: "text", q: "What are your fitness goals? (e.g., weight loss, strength, endurance)", placeholder: "Lose 20 lbs, get stronger, run a 5K\u2026" }
+  ];
+  var INTAKE_GENDERS = ["Male", "Female", "Other"];
+  var INTAKE_CONSENT = (business) => [
+    `I confirm that the information provided is accurate and that I have consulted with a healthcare provider if necessary, before starting this exercise program with ${business}.`,
+    "I understand that exercise involves some risks and I agree to listen to my body and stop if I experience discomfort or pain."
+  ];
+  var clip = (v, n = 2e3) => String(v != null ? v : "").slice(0, n).trim();
+  function buildResponses(raw) {
+    const byId = Array.isArray(raw) ? Object.fromEntries(raw.map((r) => [r.id, r])) : raw != null ? raw : {};
+    return INTAKE_QUESTIONS.map((q) => {
+      var _a;
+      const got = (_a = byId[q.id]) != null ? _a : {};
+      const answer = clip(got.answer, q.kind === "text" ? 2e3 : 200);
+      if (q.kind === "yesno" && answer !== "Yes" && answer !== "No") throw new Error("Please answer every health question.");
+      if (q.kind === "choice" && !q.options.includes(answer)) throw new Error("Please pick your activity level.");
+      if (q.kind === "text" && !answer) throw new Error("Please tell us your fitness goals.");
+      const detail = q.kind === "yesno" && answer === "Yes" ? clip(got.detail) : "";
+      return { id: q.id, q: q.q, answer, ...detail ? { detail } : {}, flag: q.kind === "yesno" && answer === "Yes" };
+    });
+  }
+  function intakeRows(a) {
+    var _a, _b;
+    if ((_a = a.responses) == null ? void 0 : _a.length) return a.responses;
+    return ((_b = a.parq) != null ? _b : []).map((yes, i) => {
+      var _a2;
+      return { id: `parq${i}`, q: (_a2 = PARQ_QUESTIONS[i]) != null ? _a2 : `Question ${i + 1}`, answer: yes ? "Yes" : "No", flag: !!yes };
+    });
+  }
+  function medicalFromResponses(rs) {
+    const get = (id) => rs.find((r) => r.id === id);
+    const line = (id, label) => {
+      const r = get(id);
+      return (r == null ? void 0 : r.answer) === "Yes" ? `${label}${r.detail ? `: ${r.detail}` : ""}` : "";
+    };
+    const current = [line("conditions", "Medical conditions"), line("medications", "Medication/supplements"), line("injuries", "Injuries/limitations"), line("pain", "Pain during activity"), line("pregnant", "Pregnant or trying to become pregnant")].filter(Boolean);
+    return { medicalCurrent: current.join("; "), medicalPast: line("surgeries", "Recent surgery") };
+  }
+  function goalsFromResponses(rs) {
+    var _a, _b;
+    return (_b = (_a = rs.find((r) => r.id === "goals")) == null ? void 0 : _a.answer) != null ? _b : "";
+  }
+  function normalizeAnswers(raw, o) {
+    var _a;
+    const signature = clip(raw.signature, 200);
+    const base = {
+      emergencyName: clip(raw.emergencyName, 200),
+      emergencyPhone: clip(raw.emergencyPhone, 50),
+      signature,
+      signedAt: o.now,
+      waiverText: o.waiverText
+    };
+    if (raw.responses) {
+      const responses = buildResponses(raw.responses);
+      if (!signature) throw new Error("Please type your full name to sign.");
+      const p = (_a = raw.profile) != null ? _a : {};
+      const gender = clip(p.gender, 40);
+      const birthDate = /^\d{4}-\d{2}-\d{2}$/.test(clip(p.birthDate, 10)) ? clip(p.birthDate, 10) : "";
+      const profile = { birthDate, gender: INTAKE_GENDERS.includes(gender) ? gender : "", phone: clip(p.phone, 50), address: clip(p.address, 300) };
+      return {
+        form: INTAKE_FORM_ID,
+        responses,
+        ...medicalFromResponses(responses),
+        ...base,
+        profile: Object.fromEntries(Object.entries(profile).filter(([, v]) => v)),
+        consent: INTAKE_CONSENT(o.business)
+      };
+    }
+    const parq = Array.isArray(raw.parq) ? raw.parq.map(Boolean).slice(0, PARQ_QUESTIONS.length) : [];
+    if (parq.length !== PARQ_QUESTIONS.length || !signature) throw new Error("Please answer every question and sign.");
+    return { parq, medicalCurrent: clip(raw.medicalCurrent), medicalPast: clip(raw.medicalPast), ...base };
+  }
+  function applyIntake(c, a) {
+    var _a, _b;
+    const next = { ...c };
+    if (a.medicalCurrent) next.medicalCurrent = a.medicalCurrent;
+    if (a.medicalPast) next.medicalPast = a.medicalPast;
+    if (a.emergencyName) next.emergencyName = a.emergencyName;
+    if (a.emergencyPhone) next.emergencyPhone = a.emergencyPhone;
+    const p = (_a = a.profile) != null ? _a : {};
+    if (p.birthDate && !next.birthDate) next.birthDate = p.birthDate;
+    if (p.gender && !next.gender) next.gender = p.gender;
+    if (p.phone && !next.phone) next.phone = p.phone;
+    if (p.address && !next.address) next.address = p.address;
+    const goals = a.responses ? goalsFromResponses(a.responses) : "";
+    if (goals && !((_b = next.notes) != null ? _b : "").includes(goals)) next.notes = [`Goals (from intake): ${goals}`, next.notes].filter(Boolean).join("\n");
+    return next;
+  }
+
   // supabase/functions/_shared/waiver.ts
   var DEFAULT_WAIVER = "I understand that physical training involves risk of injury. I confirm the health information above is true and complete, I will tell my trainer about any changes to my health, and I take part voluntarily and accept these risks.";
   var esc = (s) => s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
   var paras = (s) => s.split(/\n{2,}|\r\n\r\n/).map((p) => `<p>${esc(p.trim()).replace(/\n/g, "<br>")}</p>`).join("");
   function signedWaiverHtml(o) {
+    var _a, _b;
     const a = o.answers;
     const signed = new Date(a.signedAt);
     const when = signed.toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" });
-    const parq = PARQ_QUESTIONS.map((q, i) => `<tr><td>${i + 1}. ${esc(q)}</td><td class="${a.parq[i] ? "yes" : ""}">${a.parq[i] ? "Yes" : "No"}</td></tr>`).join("");
+    const rows = intakeRows(a);
+    const parq = rows.map((r, i) => `<tr><td>${i + 1}. ${esc(r.q)}${r.detail ? `<div class="muted">${esc(r.detail)}</div>` : ""}</td><td class="${r.flag ? "yes" : ""}">${esc(r.answer || "\u2014")}</td></tr>`).join("");
+    const p = (_a = a.profile) != null ? _a : {};
+    const profile = [p.birthDate && `Date of birth: ${esc(p.birthDate)}`, p.gender && `Gender: ${esc(p.gender)}`, p.phone && `Phone: ${esc(p.phone)}`, p.address && `Address: ${esc(p.address)}`].filter(Boolean).join("<br>");
+    const consent = ((_b = a.consent) != null ? _b : []).map((t) => `<li>${esc(t)}</li>`).join("");
+    const title = a.responses ? `${esc(o.business)} PAR-Q` : "Health questions (PAR-Q+)";
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Signed waiver: ${esc(o.clientName)}</title>
-<style>body{font-family:system-ui,-apple-system,sans-serif;color:#15171C;max-width:680px;margin:0 auto;padding:24px;line-height:1.5}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:28px 0 8px;text-transform:uppercase;letter-spacing:.05em;color:#3D434D}.muted{color:#5E6470;font-size:14px}.sig{border:1px solid #D8D5CC;border-radius:10px;padding:14px 16px;margin-top:12px}.sig strong{font-size:20px;font-family:Georgia,serif;font-style:italic}table{width:100%;border-collapse:collapse;font-size:14px}td{border-bottom:1px solid #EEE;padding:8px 4px;vertical-align:top}td:last-child{width:48px;text-align:right;font-weight:600}td.yes{color:#8F3F00}</style></head><body>
+<style>body{font-family:system-ui,-apple-system,sans-serif;color:#15171C;max-width:680px;margin:0 auto;padding:24px;line-height:1.5}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:28px 0 8px;text-transform:uppercase;letter-spacing:.05em;color:#3D434D}.muted{color:#5E6470;font-size:14px}.sig{border:1px solid #D8D5CC;border-radius:10px;padding:14px 16px;margin-top:12px}.sig strong{font-size:20px;font-family:Georgia,serif;font-style:italic}table{width:100%;border-collapse:collapse;font-size:14px}td{border-bottom:1px solid #EEE;padding:8px 4px;vertical-align:top}td:last-child{max-width:45%;text-align:right;font-weight:600}td.yes{color:#8F3F00}</style></head><body>
 <h1>${esc(o.business)}: waiver and release</h1>
 <div class="muted">Client: ${esc(o.clientName)}</div>
 <h2>Waiver</h2>${paras(o.waiverText)}
-<div class="sig"><div class="muted">Agreed to the waiver and signed by typing their full name</div><strong>${esc(a.signature)}</strong><div class="muted">${esc(when)}</div></div>
-<h2>Health questions (PAR-Q+)</h2><table>${parq}</table>
+${consent ? `<h2>Consent</h2><ul>${consent}</ul>` : ""}
+<div class="sig"><div class="muted">Agreed to ${consent ? "the statements above and " : ""}the waiver and signed by typing their full name</div><strong>${esc(a.signature)}</strong><div class="muted">${esc(when)}</div></div>
+${profile ? `<h2>Personal information</h2><p>${profile}</p>` : ""}
+<h2>${title}</h2><table>${parq}</table>
 <h2>Medical history</h2><p><b>Current:</b> ${esc(a.medicalCurrent || "None given")}</p><p><b>Past:</b> ${esc(a.medicalPast || "None given")}</p>
 <h2>Emergency contact</h2><p>${esc(a.emergencyName || "None given")}${a.emergencyPhone ? " \xB7 " + esc(a.emergencyPhone) : ""}</p>
 </body></html>`;
